@@ -5,6 +5,7 @@ import 'package:dotted_border/dotted_border.dart';
 // Import sesuai struktur project kamu
 import 'package:eschool/data/models/academic/studyMaterial.dart';
 import 'package:eschool/ui/widgets/system/downloadFileButton.dart';
+import 'package:eschool/utils/system/api.dart';
 import 'package:eschool/utils/system/utils.dart';
 
 class StudyMaterialWithDownloadButtonContainer2 extends StatelessWidget {
@@ -195,15 +196,17 @@ class StudyMaterialWithDownloadButtonContainer2 extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                    errorWidget: (context, url, error) => AspectRatio(
-                      aspectRatio: 1,
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 30,
-                        color:
-                            Theme.of(context).colorScheme.onSecondaryContainer,
-                      ),
-                    ),
+                    errorWidget: (context, url, error) {
+                      debugPrint("ERROR LOADING IMAGE: $url | Error: $error");
+                      return AspectRatio(
+                        aspectRatio: 1,
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 30,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    },
                   ),
                 )
               : Padding(

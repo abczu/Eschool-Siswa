@@ -47,9 +47,11 @@ class GuardianProfileRepository {
   Future<Guardian> updateGuardianPhoto({
     required Guardian guardianData,
     required String filePath,
+    required int childId,
   }) async {
     try {
       final formData = FormData();
+      formData.fields.add(MapEntry('child_id', childId.toString()));
 
       // helper: tambah field hanya jika ada nilai
       void addIfPresent(String key, String? value) {

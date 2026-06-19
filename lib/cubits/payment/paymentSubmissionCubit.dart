@@ -57,6 +57,7 @@ class PaymentSubmissionCubit extends Cubit<PaymentSubmissionState> {
   Future<void> submitPayment({
     required int childId,
     required List<int> feesIds, // Always use array format
+    required double amount,
     required int paymentMethodId,
     required File proofFile,
   }) async {
@@ -66,6 +67,7 @@ class PaymentSubmissionCubit extends Cubit<PaymentSubmissionState> {
       final result = await _paymentRepository.submitBulkPayment(
         childId: childId,
         feesIds: feesIds, // Always send as array
+        amount: amount,
         paymentMethodId: paymentMethodId,
         proofFile: proofFile,
       );

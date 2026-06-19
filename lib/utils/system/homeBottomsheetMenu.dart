@@ -47,7 +47,6 @@ final List<Menu> homeBottomSheetMenu = [
       iconUrl: Utils.getImagePath("result_icon.svg"),
       title: gradesKey),
 
-  //Report module is combination of assginement and exam
   Menu(
       menuModuleId:
           "$assignmentManagementModuleId$moduleIdJoiner$examManagementModuleId",

@@ -10,6 +10,9 @@ import 'package:eschool/ui/widgets/system/customBackButton.dart';
 import 'package:eschool/ui/widgets/system/screenTopBackgroundContainer.dart';
 import 'package:eschool/utils/payment/CurencyFormater.dart';
 import 'package:eschool/utils/system/errorMessageKeysAndCodes.dart';
+import 'package:eschool/data/repositories/payment/paymentSubmissionRepository.dart';
+import 'package:eschool/ui/screens/payment/payment/paymentScreen.dart';
+import 'package:eschool/cubits/payment/paymentSubmissionCubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eschool/ui/widgets/payment/paymentMethodSelectionSheet.dart';
@@ -131,8 +134,11 @@ class _XenditOnlyPaymentScreenState extends State<XenditOnlyPaymentScreen>
           'admin_fee': pm.adminFee,
           'admin_fee_type': pm.adminFeeType,
           'admin_fee_label': pm.adminFeeLabel,
-          'gateway_code':
-              pm.xenditCode ?? XenditPaymentMethod.getById(pm.id)?.xenditCode,
+          'is_online': pm.isOnline,
+          'gateway_code': pm.xenditCode ??
+              (pm.code != null
+                  ? XenditPaymentMethod.getByCode(pm.code!)?.xenditCode
+                  : XenditPaymentMethod.getById(pm.id)?.xenditCode),
         });
       }).toList();
     }
@@ -158,6 +164,31 @@ class _XenditOnlyPaymentScreenState extends State<XenditOnlyPaymentScreen>
   }
 
   Future<void> _createInvoice(double amount, XenditPaymentMethod method) async {
+    if (!method.isOnline) {
+      setState(() {
+        _isProcessing = false;
+      });
+
+      // Navigate to Manual Payment Screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (context) =>
+                  PaymentSubmissionCubit(PaymentSubmissionRepository()),
+              child: PaymentScreen(
+                selectedFees: widget.selectedFees,
+                totalAmount: amount,
+                child: widget.child,
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
     });
@@ -225,6 +256,7 @@ class _XenditOnlyPaymentScreenState extends State<XenditOnlyPaymentScreen>
           child: XenditPaymentScreen(
             invoice: invoice,
             feeIds: feeIds,
+            childId: childId,
             onPaymentSuccess: () {
               int popCount = 0;
               Navigator.of(context).popUntil((route) {

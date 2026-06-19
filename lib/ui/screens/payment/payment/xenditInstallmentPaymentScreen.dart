@@ -190,6 +190,7 @@ class _XenditInstallmentPaymentScreenState
           child: XenditPaymentScreen(
             invoice: invoice,
             feeIds: widget.feeDetails.id != null ? [widget.feeDetails.id!] : [],
+            childId: childId,
             onPaymentSuccess: () {
               // Pop back to fee list screen
               int popCount = 0;

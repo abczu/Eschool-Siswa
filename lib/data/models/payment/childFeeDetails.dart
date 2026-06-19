@@ -238,6 +238,8 @@ class PaymentMethod {
   final String? adminFeeType;
   final String? adminFeeLabel;
   final String? xenditCode;
+  final String? code;
+  final bool? isOnline;
 
   PaymentMethod(
       {this.id,
@@ -252,7 +254,9 @@ class PaymentMethod {
       this.adminFee,
       this.adminFeeType,
       this.adminFeeLabel,
-      this.xenditCode});
+      this.xenditCode,
+      this.code,
+      this.isOnline});
 
   PaymentMethod.fromJson(Map<String, dynamic> json)
       : id = json['id'] as int?,
@@ -273,7 +277,13 @@ class PaymentMethod {
             json['code'] as String? ??
             json['payment_method'] as String? ??
             json['xendit_code'] as String? ??
-            json['slug'] as String?;
+            json['slug'] as String?,
+        code = json['code'] as String? ?? json['gateway_code'] as String?,
+        isOnline = json['is_online'] != null
+            ? (json['is_online'] is bool
+                ? json['is_online'] as bool
+                : json['is_online'].toString() == '1')
+            : null;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -289,6 +299,8 @@ class PaymentMethod {
         'admin_fee_type': adminFeeType,
         'admin_fee_label': adminFeeLabel,
         'gateway_code': xenditCode,
+        'code': code,
+        'is_online': isOnline,
       };
 
   // Helper method to get the full image URL

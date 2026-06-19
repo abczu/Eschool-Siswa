@@ -360,7 +360,7 @@ class StudentRepository {
           "fees_paid_id": feesPaidId,
         },
       );
-      return base64Decode(result['pdf']);
+      return Api.fetchDocumentBytes(result['data']);
     } catch (e) {
       throw ApiException(e.toString());
     }

@@ -590,6 +590,28 @@ class Utils {
   }
 
   static String parseCustomHtml(String input) {
+    if (input.isEmpty) return "";
+
+    // Unescape common HTML entities if they are present
+    // This handles cases where the backend might send escaped HTML
+    String processedInput = input
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'");
+
+    // If the input already contains HTML tags, we should not perform manual parsing
+    // for * and / as it might interfere with the existing HTML.
+    if (processedInput.contains('<') && processedInput.contains('>')) {
+      // Still handle newlines for basic HTML formatting
+      return processedInput.replaceAll("\n", "<br/>");
+    }
+
+    // Revert to original input if no HTML was found after unescape, 
+    // or keep processedInput? Usually unescaping is safe.
+    input = processedInput;
+
     String placeholderBold = generateRandomString(10);
     String placeholderItalic = generateRandomString(10);
 

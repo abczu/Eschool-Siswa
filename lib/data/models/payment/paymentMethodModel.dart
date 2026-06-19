@@ -9,6 +9,8 @@ class PaymentMethodModel {
   final String? imageUrl;
   final String createdAt;
   final String updatedAt;
+  final String? code;
+  final bool? isOnline;
   final String? description;
 
   PaymentMethodModel({
@@ -21,6 +23,8 @@ class PaymentMethodModel {
     required this.createdAt,
     required this.updatedAt,
     this.description,
+    this.code,
+    this.isOnline,
   });
 
   factory PaymentMethodModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,12 @@ class PaymentMethodModel {
       image: json['image'] as String?,
       description: json['description'] as String?,
       imageUrl: json['image_url'] as String?,
+      code: json['code'] as String? ?? json['gateway_code'] as String?,
+      isOnline: json['is_online'] != null
+          ? (json['is_online'] is bool
+              ? json['is_online'] as bool
+              : json['is_online'].toString() == '1')
+          : null,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String,
     );

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:eschool/data/models/exam/resultOnline.dart';
 import 'package:eschool/data/models/exam/resultOnlineDetails.dart';
 import 'package:eschool/utils/system/api.dart';
@@ -95,7 +96,8 @@ class ResultRepository {
           useAuthToken: true,
           queryParameters: {"exam_id": examId, "student_id": studentId});
 
-      return result['pdf'] ?? "";
+      final bytes = await Api.fetchDocumentBytes(result['data']);
+      return base64Encode(bytes); // Tetap kembalikan String biar tidak break UI, tapi proses downloadnya sudah benar.
     } catch (e) {
       if (kDebugMode) {
         print(e.toString());

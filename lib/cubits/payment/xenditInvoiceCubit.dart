@@ -139,6 +139,7 @@ class XenditInvoiceCubit extends Cubit<XenditInvoiceState> {
           externalId: invoice.externalId,
           amount: totalAmount,
           createdAt: invoice.createdAt,
+          childId: studentId,
         ),
       );
       if (kDebugMode) {
@@ -159,7 +160,10 @@ class XenditInvoiceCubit extends Cubit<XenditInvoiceState> {
   }
 
   /// Check invoice payment status
-  Future<void> checkInvoiceStatus(String invoiceId) async {
+  Future<void> checkInvoiceStatus({
+    required String invoiceId,
+    required int childId,
+  }) async {
     // Keep current invoice while checking
     if (state is XenditInvoiceSuccess) {
       emit(
@@ -167,7 +171,10 @@ class XenditInvoiceCubit extends Cubit<XenditInvoiceState> {
     }
 
     try {
-      final invoice = await _repository.getInvoiceStatus(invoiceId);
+      final invoice = await _repository.getInvoiceStatus(
+        invoiceId: invoiceId,
+        childId: childId,
+      );
 
       // ── Safety Net Poin 1: Hapus dari pending jika sudah selesai ────────────
       if (invoice.isPaid || invoice.isExpired || invoice.isFailed) {

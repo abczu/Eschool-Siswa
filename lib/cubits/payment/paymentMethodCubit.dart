@@ -39,6 +39,13 @@ class PaymentMethodCubit extends Cubit<PaymentMethodState> {
           final String? imageUrl = methodData['image_url'] as String?;
           final String createdAt = methodData['created_at'] as String;
           final String updatedAt = methodData['updated_at'] as String;
+          final String? code =
+              (methodData['code'] ?? methodData['gateway_code']) as String?;
+          final bool? isOnline = methodData['is_online'] != null
+              ? (methodData['is_online'] is bool
+                  ? methodData['is_online'] as bool
+                  : methodData['is_online'].toString() == '1')
+              : null;
 
           paymentMethods.add(PaymentMethodModel(
             id: id,
@@ -48,6 +55,8 @@ class PaymentMethodCubit extends Cubit<PaymentMethodState> {
             image: image,
             description: description,
             imageUrl: imageUrl,
+            code: code,
+            isOnline: isOnline,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ));

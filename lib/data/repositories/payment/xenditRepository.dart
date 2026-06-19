@@ -77,7 +77,10 @@ class XenditRepository {
   ///
   /// DEMO: Returns mock status
   /// PRODUCTION: Will call backend API to get real invoice status
-  Future<XenditInvoice> getInvoiceStatus(String invoiceId) async {
+  Future<XenditInvoice> getInvoiceStatus({
+    required String invoiceId,
+    required int childId,
+  }) async {
     // Use direct Xendit API (for testing without backend)
     if (_useDirectXendit && !_isDemoMode) {
       return await _directRepository.getInvoiceStatus(invoiceId);
@@ -103,7 +106,10 @@ class XenditRepository {
     try {
       final result = await Api.post(
         url: Api.getXenditStatus,
-        body: {'invoice_id': invoiceId},
+        body: {
+          'invoice_id': invoiceId,
+          'child_id': childId,
+        },
         useAuthToken: true,
       );
 

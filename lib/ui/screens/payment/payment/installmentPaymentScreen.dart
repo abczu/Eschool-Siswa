@@ -690,7 +690,16 @@ class _InstallmentPaymentScreenState extends State<InstallmentPaymentScreen>
   }
 
   void _showSuccessDialog(PaymentSubmissionSuccess state) {
-    final amount = _parseAmount(_amountController.text);
+    // Ambil nominal riil dari respon API jika tersedia
+    final double apiAmount = double.tryParse(
+            (state.response['data']['total_amount'] ??
+                    state.response['data']['amount'] ??
+                    0)
+                .toString()) ??
+        0.0;
+    final amount =
+        apiAmount != 0 ? apiAmount : _parseAmount(_amountController.text);
+
     // Always use translation key for consistent language
     final message = Utils.getTranslatedLabel(paymentSuccessMsgKey);
 

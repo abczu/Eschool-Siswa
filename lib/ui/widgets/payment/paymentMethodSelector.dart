@@ -16,7 +16,9 @@ class PaymentMethodSelector extends StatelessWidget {
   }) : super(key: key);
 
   Widget _buildPaymentMethodCard(BuildContext context, PaymentMethod method) {
-    if (method.id == 16) return const SizedBox.shrink();
+    // Sembunyikan metode pembayaran tertentu (misal: Cash/Manual yang tidak diinginkan di list ini)
+    // ID 16 sebelumnya di-hardcode, sekarang kita tambahkan proteksi berbasis code
+    if (method.id == 16 || method.code?.toUpperCase() == 'CASH_OFFLINE') return const SizedBox.shrink();
     final isSelected = selectedMethod?.id == method.id;
 
     return Animate(
@@ -73,7 +75,7 @@ class PaymentMethodSelector extends StatelessWidget {
                       ? Border.all(color: Colors.grey.shade200, width: 1)
                       : null,
                 ),
-                child: method.hasImage
+                child: method.hasImage && method.fullImageUrl!.trim().isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: CachedNetworkImage(

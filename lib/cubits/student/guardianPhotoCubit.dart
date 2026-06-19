@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 // ignore: depend_on_referenced_packages
 import 'package:bloc/bloc.dart';
 import 'package:eschool/data/models/auth/guardian.dart';
@@ -31,17 +31,21 @@ class GuardianPhotoCubit extends Cubit<GuardianPhotoState> {
   /// Konsisten dengan pola ExamDetailsCubit: emit InProgress -> Success/Failure
   void updateGuardianPhoto({
     required Guardian guardian,
+    required int childId,
     XFile? file,
   }) {
     emit(GuardianPhotoInProgress());
     debugPrint("dicubit");
     _repository
         .updateGuardianPhoto(
-            guardianData: guardian, filePath: file != null ? file.path : "")
+      guardianData: guardian,
+      filePath: file != null ? file.path : "",
+      childId: childId,
+    )
         .then((r) => emit(GuardianPhotoSuccess(data: r)))
         .catchError(
-          (e) => emit(GuardianPhotoFailure(e.toString())),
-        );
+      (e) => emit(GuardianPhotoFailure(e.toString())),
+    );
     debugPrint("dicubit2");
   }
 }

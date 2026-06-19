@@ -64,7 +64,10 @@ class PendingPaymentCheckCubit extends Cubit<PendingPaymentCheckState> {
 
     for (final pending in pendingList) {
       try {
-        final invoice = await _repository.getInvoiceStatus(pending.invoiceId);
+        final invoice = await _repository.getInvoiceStatus(
+          invoiceId: pending.invoiceId,
+          childId: pending.childId,
+        );
 
         if (invoice.isPaid) {
           paidIds.add(invoice.id);

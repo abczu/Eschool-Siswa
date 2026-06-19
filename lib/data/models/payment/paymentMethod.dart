@@ -15,6 +15,7 @@ class XenditPaymentMethod extends Equatable {
   final String? adminFeeType; // "flat" atau "percentage"
   final String? adminFeeLabel;
   final String? xenditCode; // Kode untuk Xendit invoice restriction
+  final bool isOnline; // Tambahkan ini
 
   /// Get local asset path for payment logo
   String? get assetLogo {
@@ -40,10 +41,11 @@ class XenditPaymentMethod extends Equatable {
     this.adminFeeType,
     this.adminFeeLabel,
     this.xenditCode,
+    this.isOnline = true, // Default true untuk kompatibilitas
   });
 
   /// Parse dari API response JSON.
-  /// Fields yang diharapkan: id, name, code/gateway_code, image_url, admin_fee
+  /// Fields yang diharapkan: id, name, code/gateway_code, image_url, admin_fee, is_online
   factory XenditPaymentMethod.fromJson(Map<String, dynamic> json) {
     double parsedAdminFee = 0.0;
     final rawFee = json['admin_fee'];
@@ -56,17 +58,32 @@ class XenditPaymentMethod extends Equatable {
     final code =
         json['gateway_code'] as String? ?? json['code'] as String? ?? '';
 
+    // Coba cari template metode berdasarkan kode (Template berisi icon, logo, dll yang benar)
+    final template = code.isNotEmpty ? getByCode(code) : null;
+
+    // Baca is_online dari API, jika tidak ada cek template, jika tidak ada default true
+    final isOnlineFromApi = json['is_online'];
+    bool isOnline = true;
+    if (isOnlineFromApi != null) {
+      isOnline = (isOnlineFromApi == 1 || isOnlineFromApi == true || isOnlineFromApi == "1");
+    } else if (template != null) {
+      isOnline = template.isOnline;
+    } else if (code == 'CASH' || code == 'MANUAL_TRANSFER') {
+      isOnline = false;
+    }
+
     return XenditPaymentMethod(
-      id: json['id'],
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      icon: _fallbackIconFromCode(code),
-      iconUrl: json['image_url'] ?? json['logo_url'],
-      type: _xenditTypeFromCode(code),
-      adminFee: parsedAdminFee,
-      adminFeeType: json['admin_fee_type'] as String?,
-      adminFeeLabel: json['admin_fee_label'] as String?,
-      xenditCode: code.isEmpty ? null : code,
+      id: json['id'] ?? template?.id,
+      name: json['name'] ?? template?.name ?? '',
+      description: json['description'] ?? template?.description ?? '',
+      icon: template?.icon ?? _fallbackIconFromCode(code),
+      iconUrl: json['image_url'] ?? json['logo_url'] ?? template?.iconUrl,
+      type: template?.type ?? _xenditTypeFromCode(code),
+      adminFee: parsedAdminFee != 0 ? parsedAdminFee : (template?.adminFee ?? 0),
+      adminFeeType: json['admin_fee_type'] as String? ?? template?.adminFeeType,
+      adminFeeLabel: json['admin_fee_label'] as String? ?? template?.adminFeeLabel,
+      xenditCode: code.isEmpty ? template?.xenditCode : code,
+      isOnline: isOnline,
     );
   }
 
@@ -150,6 +167,17 @@ class XenditPaymentMethod extends Equatable {
     return [
       // E-Wallets
       const XenditPaymentMethod(
+        id: 1,
+        name: 'OVO',
+        description: 'E-wallet OVO',
+        icon: '💜',
+        iconUrl: null,
+        type: XenditPaymentMethodType.eWallet,
+        adminFee: 0,
+        xenditCode: 'OVO',
+        isOnline: true,
+      ),
+      const XenditPaymentMethod(
         id: 3,
         name: 'Gopay',
         description: 'E-wallet Gopay',
@@ -160,6 +188,7 @@ class XenditPaymentMethod extends Equatable {
         adminFee: 0.015,
         adminFeeType: 'percentage',
         xenditCode: 'GOPAY',
+        isOnline: true,
       ),
       const XenditPaymentMethod(
         id: 4,
@@ -172,9 +201,31 @@ class XenditPaymentMethod extends Equatable {
         adminFee: 0.015,
         adminFeeType: 'percentage',
         xenditCode: 'DANA',
+        isOnline: true,
+      ),
+      const XenditPaymentMethod(
+        id: 11,
+        name: 'ShopeePay',
+        description: 'E-wallet ShopeePay',
+        icon: '🧡',
+        type: XenditPaymentMethodType.eWallet,
+        adminFee: 0,
+        xenditCode: 'SHOPEEPAY',
+        isOnline: true,
       ),
 
       // Virtual Accounts
+      const XenditPaymentMethod(
+        id: 2,
+        name: 'BCA',
+        description: 'Virtual Account BCA',
+        icon: '🏦',
+        type: XenditPaymentMethodType.virtualAccount,
+        adminFee: 4000.0,
+        adminFeeType: 'flat',
+        xenditCode: 'BCA',
+        isOnline: true,
+      ),
       const XenditPaymentMethod(
         id: 5,
         name: 'BSI',
@@ -184,6 +235,7 @@ class XenditPaymentMethod extends Equatable {
         adminFee: 4000.0,
         adminFeeType: 'flat',
         xenditCode: 'BSI',
+        isOnline: true,
       ),
       const XenditPaymentMethod(
         id: 6,
@@ -194,6 +246,7 @@ class XenditPaymentMethod extends Equatable {
         adminFee: 4000.0,
         adminFeeType: 'flat',
         xenditCode: 'BRI',
+        isOnline: true,
       ),
       const XenditPaymentMethod(
         id: 7,
@@ -204,6 +257,39 @@ class XenditPaymentMethod extends Equatable {
         adminFee: 4000.0,
         adminFeeType: 'flat',
         xenditCode: 'MANDIRI',
+        isOnline: true,
+      ),
+      const XenditPaymentMethod(
+        id: 8,
+        name: 'BNI',
+        description: 'Virtual Account BNI',
+        icon: '🏦',
+        type: XenditPaymentMethodType.virtualAccount,
+        adminFee: 4000.0,
+        adminFeeType: 'flat',
+        xenditCode: 'BNI',
+        isOnline: true,
+      ),
+      // Offline/Manual Methods
+      const XenditPaymentMethod(
+        id: 99,
+        name: 'Tunai (Cash)',
+        description: 'Pembayaran tunai di kasir sekolah',
+        icon: '💵',
+        type: XenditPaymentMethodType.manual,
+        adminFee: 0,
+        xenditCode: 'CASH',
+        isOnline: false,
+      ),
+      const XenditPaymentMethod(
+        id: 100,
+        name: 'Transfer Manual',
+        description: 'Transfer bank ke rekening sekolah lalu upload bukti',
+        icon: '🏦',
+        type: XenditPaymentMethodType.manual,
+        adminFee: 0,
+        xenditCode: 'MANUAL_TRANSFER',
+        isOnline: false,
       ),
     ];
   }
@@ -219,6 +305,18 @@ class XenditPaymentMethod extends Equatable {
     }
   }
 
+  /// Cari metode berdasarkan kode string (misal: "OVO", "DANA", "BSI")
+  /// Mengembalikan null jika tidak ditemukan.
+  static XenditPaymentMethod? getByCode(String code) {
+    try {
+      final upperCode = code.toUpperCase();
+      return getAllMethods()
+          .firstWhere((m) => m.xenditCode?.toUpperCase() == upperCode);
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<Object?> get props => [
         id,
         name,
@@ -226,6 +324,7 @@ class XenditPaymentMethod extends Equatable {
         adminFee,
         adminFeeType,
         xenditCode,
+        isOnline,
       ];
 }
 
@@ -234,7 +333,8 @@ enum XenditPaymentMethodType {
   virtualAccount('Transfer Bank (VA)'),
   eWallet('E-Wallet'),
   qris('QR Code'),
-  creditCard('Kartu Kredit');
+  creditCard('Kartu Kredit'),
+  manual('Pembayaran Manual');
 
   final String categoryName;
   const XenditPaymentMethodType(this.categoryName);

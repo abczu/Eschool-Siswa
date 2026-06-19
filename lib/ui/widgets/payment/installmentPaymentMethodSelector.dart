@@ -111,7 +111,8 @@ class InstallmentPaymentMethodSelector extends StatelessWidget {
                         }
                         return Column(
                           children: state.paymentMethods.map((method) {
-                            if (method.id == 16) return const SizedBox.shrink();
+                            // Sembunyikan metode pembayaran tertentu (misal: Cash/Manual)
+                            if (method.id == 16 || method.code?.toUpperCase() == 'CASH_OFFLINE') return const SizedBox.shrink();
                             final isSelected =
                                 selectedPaymentMethod?.id == method.id;
 
@@ -159,18 +160,18 @@ class InstallmentPaymentMethodSelector extends StatelessWidget {
                                         height: 48,
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(12),
-                                          color: (method.imageUrl?.isNotEmpty == true)
+                                          color: (method.imageUrl?.trim().isNotEmpty == true)
                                               ? Colors.white
                                               : Theme.of(context)
                                                   .colorScheme
                                                   .primary
                                                   .withValues(alpha: 0.9),
-                                          border: (method.imageUrl?.isNotEmpty == true)
+                                          border: (method.imageUrl?.trim().isNotEmpty == true)
                                               ? Border.all(
                                                   color: Colors.grey.shade200, width: 1)
                                               : null,
                                         ),
-                                        child: (method.imageUrl?.isNotEmpty == true)
+                                        child: (method.imageUrl?.trim().isNotEmpty == true)
                                             ? ClipRRect(
                                                 borderRadius: BorderRadius.circular(12),
                                                 child: CachedNetworkImage(

@@ -72,6 +72,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     await context.read<PaymentSubmissionCubit>().submitPayment(
           childId: widget.child.id!,
           feesIds: feesIds,
+          amount: widget.totalAmount,
           paymentMethodId: selectedPaymentMethod!.id!,
           proofFile: selectedProofFile!,
         );
@@ -249,12 +250,23 @@ class _PaymentScreenState extends State<PaymentScreen>
             final message = Utils.getTranslatedLabel(paymentSuccessMsgKey);
             Map<String, String> paymentDetails = {};
 
+            // Ambil nominal riil dari respon API (total_amount atau amount)
+            // Prioritaskan data dari backend untuk akurasi partial payment
+            final double paidAmount = double.tryParse(
+                    (state.response['data']['total_amount'] ??
+                            state.response['data']['amount'] ??
+                            0)
+                        .toString()) ??
+                0.0;
+
             if (state.paymentMethod == 'single') {
               final fee = widget.selectedFees.first;
               paymentDetails[Utils.getTranslatedLabel(feesKey)] =
                   fee.name ?? 'Biaya tidak diketahui';
               paymentDetails[Utils.getTranslatedLabel(amountKey)] =
-                  _formatCurrency(fee.remainingFeeAmountToPay());
+                  _formatCurrency(paidAmount != 0
+                      ? paidAmount
+                      : fee.remainingFeeAmountToPay());
               paymentDetails[Utils.getTranslatedLabel(paymentMethodKey)] =
                   selectedPaymentMethod!.name ?? 'Tidak Dikenal';
               paymentDetails[Utils.getTranslatedLabel(statusKey)] =
@@ -268,7 +280,8 @@ class _PaymentScreenState extends State<PaymentScreen>
             } else {
               paymentDetails['Total Biaya'] = '${widget.selectedFees.length}';
               paymentDetails[Utils.getTranslatedLabel(amountKey)] =
-                  _formatCurrency(widget.totalAmount);
+                  _formatCurrency(
+                      paidAmount != 0 ? paidAmount : widget.totalAmount);
               paymentDetails[Utils.getTranslatedLabel(paymentMethodKey)] =
                   selectedPaymentMethod!.name ?? 'Tidak Dikenal';
               paymentDetails[Utils.getTranslatedLabel(statusKey)] =

@@ -16,14 +16,25 @@ import 'package:eschool/data/models/auth/student.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:eschool/cubits/payment/downloadFeeReceiptCubit.dart';
+import 'package:eschool/data/repositories/payment/feeRepository.dart';
+import 'package:open_filex/open_filex.dart';
+
 class PaymentHistoryTabScreen extends StatefulWidget {
   final Student child;
   const PaymentHistoryTabScreen({super.key, required this.child});
 
   static Widget routeInstance({required Student child}) {
-    return BlocProvider(
-      create: (context) => PaymentTransactionsCubit(PaymentRepository())
-        ..fetchPaymentTransactions(child.id ?? 0),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<PaymentTransactionsCubit>(
+          create: (context) => PaymentTransactionsCubit(PaymentRepository())
+            ..fetchPaymentTransactions(child.id ?? 0),
+        ),
+        BlocProvider<DownloadFeeReceiptCubit>(
+          create: (context) => DownloadFeeReceiptCubit(FeeRepository()),
+        ),
+      ],
       child: PaymentHistoryTabScreen(child: child),
     );
   }
@@ -247,164 +258,195 @@ class _PaymentHistoryTabScreenState extends State<PaymentHistoryTabScreen> {
   // ===== UI =====
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: Column(
-        children: [
-          // AppBar sederhana (tanpa filter di dalamnya)
-          ScreenTopBackgroundContainer(
-            heightPercentage: Utils.appBarSmallerHeightPercentage,
-            child: Stack(
-              children: [
-                const Positioned(
-                  left: 10,
-                  top: -2,
-                  child: CustomBackButton(),
-                ),
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: Text(
-                    Utils.getTranslatedLabel(historyofCostsKey),
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      fontSize: Utils.screenTitleFontSize,
+    return BlocListener<DownloadFeeReceiptCubit, DownloadFeeReceiptState>(
+      listener: (context, state) async {
+        if (state is DownloadFeeReceiptInProgress) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (state is DownloadFeeReceiptSuccess) {
+          Navigator.pop(context);
+          final result = await OpenFilex.open(state.downloadedFilePath);
+          if (result.type != ResultType.done) {
+            Utils.showCustomSnackBar(
+              context: context,
+              errorMessage: "Tidak dapat membuka berkas: ${result.message}",
+              backgroundColor: Theme.of(context).colorScheme.error,
+            );
+          }
+        } else if (state is DownloadFeeReceiptFailure) {
+          Navigator.pop(context);
+          Utils.showCustomSnackBar(
+            context: context,
+            errorMessage:
+                'Gagal mengunduh struk: ${Utils.getTranslatedLabel(state.errorMessage)}',
+            backgroundColor: Theme.of(context).colorScheme.error,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Column(
+          children: [
+            // AppBar sederhana (tanpa filter di dalamnya)
+            ScreenTopBackgroundContainer(
+              heightPercentage: Utils.appBarSmallerHeightPercentage,
+              child: Stack(
+                children: [
+                  const Positioned(
+                    left: 10,
+                    top: -2,
+                    child: CustomBackButton(),
+                  ),
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Text(
+                      Utils.getTranslatedLabel(historyofCostsKey),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        fontSize: Utils.screenTitleFontSize,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // === FILTER BAR DI BAWAH APPBAR ===
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Material(
-              elevation: 8,
-              shadowColor: Colors.black12,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade100),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Row 1: Preset Waktu
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_month_rounded,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 6),
-                        Text('Waktu',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(context).colorScheme.secondary,
-                            )),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(children: _buildTimeChips()),
-                    ),
-                    const SizedBox(height: 12),
-                    // Row 2: Status
-                    Row(
-                      children: [
-                        Icon(Icons.rule_rounded,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 6),
-                        Text('Status',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Theme.of(context).colorScheme.secondary,
-                            )),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(children: _buildStatusChips()),
-                    ),
-                  ],
+            // === FILTER BAR DI BAWAH APPBAR ===
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: Material(
+                elevation: 8,
+                shadowColor: Colors.black12,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Row 1: Preset Waktu
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text('Waktu',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context).colorScheme.secondary,
+                              )),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(children: _buildTimeChips()),
+                      ),
+                      const SizedBox(height: 12),
+                      // Row 2: Status
+                      Row(
+                        children: [
+                          Icon(Icons.rule_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text('Status',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context).colorScheme.secondary,
+                              )),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(children: _buildStatusChips()),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // === CONTENT ===
-          Expanded(
-            child:
-                BlocBuilder<PaymentTransactionsCubit, PaymentTransactionsState>(
-              builder: (context, state) {
-                if (state is PaymentTransactionsFetchSuccess) {
-                  final filtered = _filterAndSort(state.paymentTransactions);
+            // === CONTENT ===
+            Expanded(
+              child: BlocBuilder<PaymentTransactionsCubit,
+                  PaymentTransactionsState>(
+                builder: (context, state) {
+                  if (state is PaymentTransactionsFetchSuccess) {
+                    final filtered = _filterAndSort(state.paymentTransactions);
 
-                  if (filtered.isEmpty) {
-                    return SizedBox.expand(
-                      child: Animate(
-                        effects: const [
-                          FadeEffect(duration: Duration(milliseconds: 400)),
-                          ScaleEffect(duration: Duration(milliseconds: 400)),
-                        ],
-                        autoPlay: true,
-                        onComplete: (c) => c.stop(),
-                        child: NoDataContainer(
-                            titleKey:
-                                Utils.getTranslatedLabel("noTransactions")),
-                      ),
-                    );
-                  }
+                    if (filtered.isEmpty) {
+                      return SizedBox.expand(
+                        child: Animate(
+                          effects: const [
+                            FadeEffect(duration: Duration(milliseconds: 400)),
+                            ScaleEffect(duration: Duration(milliseconds: 400)),
+                          ],
+                          autoPlay: true,
+                          onComplete: (c) => c.stop(),
+                          child: NoDataContainer(
+                              titleKey:
+                                  Utils.getTranslatedLabel("noTransactions")),
+                        ),
+                      );
+                    }
 
-                  return RefreshIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                    onRefresh: () async {
-                      context
-                          .read<PaymentTransactionsCubit>()
-                          .fetchPaymentTransactions(widget.child.id ?? 0);
-                    },
-                    child: ListView.builder(
-                      itemCount: filtered.length,
-                      padding: const EdgeInsets.only(bottom: 25, top: 10),
-                      itemBuilder: (context, index) {
-                        return _buildTransactionCard(filtered[index], index);
-                      },
-                    ),
-                  );
-                }
-
-                if (state is PaymentTransactionsFetchFailure) {
-                  return Center(
-                    child: ErrorContainer(
-                      errorMessageCode: state.errorMessage,
-                      animate: true,
-                      onTapRetry: () {
+                    return RefreshIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                      onRefresh: () async {
                         context
                             .read<PaymentTransactionsCubit>()
                             .fetchPaymentTransactions(widget.child.id ?? 0);
                       },
-                    ),
-                  );
-                }
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        padding: const EdgeInsets.only(bottom: 25, top: 10),
+                        itemBuilder: (context, index) {
+                          return _buildTransactionCard(filtered[index], index);
+                        },
+                      ),
+                    );
+                  }
 
-                // Shimmer
-                return ListView.builder(
-                  itemCount: 5,
-                  padding: const EdgeInsets.only(bottom: 25, top: 10),
-                  itemBuilder: (context, index) => _buildTransactionShimmer(),
-                );
-              },
+                  if (state is PaymentTransactionsFetchFailure) {
+                    return Center(
+                      child: ErrorContainer(
+                        errorMessageCode: state.errorMessage,
+                        animate: true,
+                        onTapRetry: () {
+                          context
+                              .read<PaymentTransactionsCubit>()
+                              .fetchPaymentTransactions(widget.child.id ?? 0);
+                        },
+                      ),
+                    );
+                  }
+
+                  // Shimmer
+                  return ListView.builder(
+                    itemCount: 5,
+                    padding: const EdgeInsets.only(bottom: 25, top: 10),
+                    itemBuilder: (context, index) => _buildTransactionShimmer(),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -492,7 +534,8 @@ class _PaymentHistoryTabScreenState extends State<PaymentHistoryTabScreen> {
   }) {
     final primary = Theme.of(context).colorScheme.primary;
 
-    final Color bg = selected ? Colors.white : Colors.white.withValues(alpha: 0.18);
+    final Color bg =
+        selected ? Colors.white : Colors.white.withValues(alpha: 0.18);
     final Color border =
         selected ? primary.withValues(alpha: 0.7) : Colors.grey.shade300;
     final Color text = selected ? primary : Colors.grey.shade800;
@@ -550,7 +593,8 @@ class _PaymentHistoryTabScreenState extends State<PaymentHistoryTabScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.08),
+            color:
+                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.08),
             blurRadius: 15,
             offset: const Offset(0, 5),
           )
@@ -679,30 +723,8 @@ class _PaymentHistoryTabScreenState extends State<PaymentHistoryTabScreen> {
     }
 
     try {
-      // Bangun URL unduhan dengan query payment_history_id[index]=id
-      final buffer = StringBuffer(Api.downloadFeeReceipt);
-      for (int i = 0; i < paymentIds.length; i++) {
-        buffer.write(i == 0 ? '?' : '&');
-        buffer.write('payment_history_id[$i]=');
-        buffer.write(Uri.encodeQueryComponent(paymentIds[i]));
-      }
-      final receiptUrl = buffer.toString();
-
-      final fileName = 'struk_pembayaran_${paymentIds.join('_')}';
-      final studyMaterial = StudyMaterial(
-        id: 0,
-        fileName: fileName,
-        fileUrl: receiptUrl,
-        fileExtension: 'pdf',
-        fileThumbnail: '',
-        studyMaterialType: StudyMaterialType.file,
-      );
-
-      Utils.openDownloadBottomsheet(
-        context: context,
-        storeInExternalStorage: true,
-        studyMaterial: studyMaterial,
-      );
+      context.read<DownloadFeeReceiptCubit>().downloadFeeReceiptFromHistoryIds(
+          childId: widget.child.id ?? 0, paymentHistoryIds: paymentIds);
     } catch (e, s) {
       print('Download receipt error: $e\n$s');
       Utils.showCustomSnackBar(

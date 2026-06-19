@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -19,6 +20,31 @@ class ApiException implements Exception {
 
 // ignore: avoid_classes_with_only_static_members
 class Api {
+  /// Extracts a user-readable error message from a Dio response.
+  /// Priority: response JSON 'message' field → status code fallback.
+  static String _extractErrorMessage(Response? response, {String? fallbackCode}) {
+    try {
+      final data = response?.data;
+      if (data is Map) {
+        // Backend sekarang kirim {"success": false, "message": "..."}
+        if (data.containsKey('message') && data['message'] != null) {
+          return data['message'].toString();
+        }
+      }
+    } catch (_) {}
+
+    // Fallback berdasarkan HTTP Status Code sesuai standar baru backend
+    final statusCode = response?.statusCode;
+    if (statusCode == 400) return "Permintaan tidak valid (Bad Request)";
+    if (statusCode == 401) return ErrorMessageKeysAndCode.unauthenticatedErrorCode;
+    if (statusCode == 422) return "Data tidak valid atau kurang lengkap";
+    if (statusCode == 429) return ErrorMessageKeysAndCode.tooManyAttemps;
+    if (statusCode == 500 || statusCode == 503) return ErrorMessageKeysAndCode.internetServerErrorCode;
+    if (statusCode == 404) return ErrorMessageKeysAndCode.fileNotFoundErrorCode;
+
+    return fallbackCode ?? ErrorMessageKeysAndCode.defaultErrorMessageCode;
+  }
+
   static Map<String, dynamic> headers() {
     final String jwtToken = AuthRepository().getJwtToken();
     final schoolCode = AuthRepository().schoolCode;
@@ -322,7 +348,11 @@ class Api {
         print("Response: ${response.data}");
       }
       if (response.data['error'] == true) {
-        throw ApiException(response.data['code'].toString());
+        throw ApiException(
+          response.data['message']?.toString() ??
+              response.data['code']?.toString() ??
+              ErrorMessageKeysAndCode.defaultErrorMessageCode,
+        );
       }
       return Map.from(response.data);
     } on DioException catch (e) {
@@ -331,19 +361,10 @@ class Api {
         print(e.response?.data);
         print(e.response?.statusCode);
       }
-      if (e.response?.statusCode == 503 || e.response?.statusCode == 500) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
+      if (e.error is SocketException) {
+        throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-
-      if (e.response?.statusCode == 302) {
-        print("Redirected: ${e.response?.data}");
-        throw ApiException("Redirected: ${e.response?.data}");
-      }
-      throw ApiException(
-        e.error is SocketException
-            ? ErrorMessageKeysAndCode.noInternetCode
-            : ErrorMessageKeysAndCode.defaultErrorMessageCode,
-      );
+      throw ApiException(_extractErrorMessage(e.response));
     } on ApiException catch (e) {
       throw ApiException(e.errorMessage);
     } catch (e) {
@@ -391,28 +412,15 @@ class Api {
         print(e.response?.data);
         print(e.response?.statusCode);
       }
-
-      if (e.response?.statusCode == 429) {
-        throw ApiException(ErrorMessageKeysAndCode.tooManyAttemps);
+      if (e.error is SocketException) {
+        throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-
-      if (e.response?.statusCode == 401) {
-        throw ApiException(ErrorMessageKeysAndCode.unauthenticatedErrorCode);
-      }
-      if (e.response?.statusCode == 503 || e.response?.statusCode == 500) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
-      }
-      throw ApiException(
-        e.error is SocketException
-            ? ErrorMessageKeysAndCode.noInternetCode
-            : ErrorMessageKeysAndCode.defaultErrorMessageCode,
-      );
+      throw ApiException(_extractErrorMessage(e.response));
     } on ApiException catch (e) {
       throw ApiException(e.errorMessage.toString());
     } catch (e) {
       if (kDebugMode) {
         print(e);
-        print("DEBUG ERRORRR");
         print(e.toString());
       }
       throw ApiException(ErrorMessageKeysAndCode.defaultErrorMessageKey);
@@ -460,18 +468,16 @@ class Api {
         },
       );
     } on DioException catch (e) {
-      // mapping error-mu yang lama tetap dipertahankan
-      if (e.response?.statusCode == 503 || e.response?.statusCode == 500) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
+      if (e.error is SocketException) {
+        throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-      if (e.response?.statusCode == 404) {
-        throw ApiException(ErrorMessageKeysAndCode.fileNotFoundErrorCode);
-      }
-      throw ApiException(
-        e.error is SocketException
-            ? ErrorMessageKeysAndCode.noInternetCode
-            : ErrorMessageKeysAndCode.defaultErrorMessageCode,
-      );
+      // Download: prioritaskan file-not-found untuk 404
+      throw ApiException(_extractErrorMessage(
+        e.response,
+        fallbackCode: e.response?.statusCode == 404
+            ? ErrorMessageKeysAndCode.fileNotFoundErrorCode
+            : null,
+      ));
     } on ApiException catch (e) {
       throw ApiException(e.errorMessage);
     } catch (e) {
@@ -537,18 +543,10 @@ class Api {
         print(e.response?.data);
         print(e.response?.statusCode);
       }
-
-      if (e.response?.statusCode == 401) {
-        throw ApiException(ErrorMessageKeysAndCode.unauthenticatedErrorCode);
+      if (e.error is SocketException) {
+        throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-      if (e.response?.statusCode == 503 || e.response?.statusCode == 500) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
-      }
-      throw ApiException(
-        e.error is SocketException
-            ? ErrorMessageKeysAndCode.noInternetCode
-            : ErrorMessageKeysAndCode.defaultErrorMessageCode,
-      );
+      throw ApiException(_extractErrorMessage(e.response));
     } on ApiException catch (e) {
       throw ApiException(e.errorMessage.toString());
     } catch (e) {
@@ -559,5 +557,30 @@ class Api {
     }
   }
 
-  // Fitur baru Eschool versi 1.3.3 - Galang
+  /// Mengambil data dokumen (PDF) dengan prioritas 'pdf_url' (Fase 2 Backend).
+  /// Menggunakan [pdf_url] jika tersedia, atau fallback ke [pdf] base64.
+  static Future<Uint8List> fetchDocumentBytes(Map<String, dynamic> data) async {
+    // Prioritaskan URL karena lebih hemat memori
+    if (data['pdf_url'] != null && data['pdf_url'].toString().isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Api] Downloading document via URL: ${data['pdf_url']}');
+      }
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        data['pdf_url'].toString(),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data!);
+    }
+
+    // Fallback ke Base64 (Legacy)
+    if (data['pdf'] != null && data['pdf'].toString().isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Api] Loading document via Base64 (Legacy)');
+      }
+      return base64Decode(data['pdf'].toString());
+    }
+
+    throw ApiException("Konten dokumen tidak ditemukan dalam respons API.");
+  }
 }

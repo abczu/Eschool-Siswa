@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:eschool/data/repositories/payment/feeRepository.dart';
 import 'package:eschool/utils/system/errorMessageKeysAndCodes.dart';
@@ -41,15 +42,73 @@ class DownloadFeeReceiptCubit extends Cubit<DownloadFeeReceiptState> {
 
       final File file = File(filePath);
 
-      final receiptContent =
+      final receiptBytes =
           await _feeRepository.getFeeReceipt(childId: childId, feeId: feeId);
-      await file.create(recursive: true);
 
-      await file.writeAsBytes(base64Decode(receiptContent));
+      if (receiptBytes.isEmpty) {
+        emit(DownloadFeeReceiptFailure("Struk tidak ditemukan di server."));
+        return;
+      }
+
+      // Validasi: Apakah ini benar-benar file PDF?
+      // PDF signature: %PDF- (dalam bytes: 0x25, 0x50, 0x44, 0x46, 0x2d)
+      if (receiptBytes.length < 5 ||
+          receiptBytes[0] != 0x25 ||
+          receiptBytes[1] != 0x50 ||
+          receiptBytes[2] != 0x44 ||
+          receiptBytes[3] != 0x46) {
+        emit(DownloadFeeReceiptFailure(
+            "Format berkas tidak valid atau korup. Silakan hubungi admin."));
+        return;
+      }
+
+      await file.create(recursive: true);
+      await file.writeAsBytes(receiptBytes);
       emit(DownloadFeeReceiptSuccess(downloadedFilePath: filePath));
     } catch (e) {
       emit(DownloadFeeReceiptFailure(
-          ErrorMessageKeysAndCode.defaultErrorMessageKey));
+          ErrorMessageMapper.getUserFriendlyMessage(e)));
+    }
+  }
+
+  void downloadFeeReceiptFromHistoryIds(
+      {required int childId, required List<String> paymentHistoryIds}) async {
+    try {
+      emit(DownloadFeeReceiptInProgress());
+
+      final path = (await getApplicationDocumentsDirectory()).path;
+      final String fileName =
+          "struk_${childId}_${paymentHistoryIds.join('_')}.pdf";
+      final String filePath = "$path/Fees-Receipts/$fileName";
+
+      final File file = File(filePath);
+
+      final receiptBytes = await _feeRepository.getFeeReceiptFromHistoryIds(
+          childId: childId, paymentHistoryIds: paymentHistoryIds);
+
+      if (receiptBytes.isEmpty) {
+        emit(DownloadFeeReceiptFailure("Struk tidak ditemukan di server."));
+        return;
+      }
+
+      // Validasi signature PDF
+      if (receiptBytes.length < 5 ||
+          receiptBytes[0] != 0x25 ||
+          receiptBytes[1] != 0x50 ||
+          receiptBytes[2] != 0x44 ||
+          receiptBytes[3] != 0x46) {
+        emit(DownloadFeeReceiptFailure(
+            "Format kuitansi tidak valid dari server (Bukan PDF)."));
+        return;
+      }
+
+      await file.create(recursive: true);
+      await file.writeAsBytes(receiptBytes);
+
+      emit(DownloadFeeReceiptSuccess(downloadedFilePath: filePath));
+    } catch (e) {
+      emit(DownloadFeeReceiptFailure(
+          ErrorMessageMapper.getUserFriendlyMessage(e)));
     }
   }
 }

@@ -233,6 +233,25 @@ class _PaymentMethodSelectionSheetState
                       color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
+                  const SizedBox(height: 2),
+                  if (!method.isOnline)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Text(
+                        'Manual / Bukti Transfer',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
                   Text(
                     method.getFeeDescription(widget.baseAmount),
                     style: TextStyle(

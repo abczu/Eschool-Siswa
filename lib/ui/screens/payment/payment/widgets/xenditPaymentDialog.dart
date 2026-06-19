@@ -12,12 +12,14 @@ class XenditPaymentDialog extends StatelessWidget {
   final VoidCallback? onPaymentFailed;
   final List<int>? feeIds;
 
+  final int childId;
   const XenditPaymentDialog({
     Key? key,
     required this.invoice,
     required this.onPaymentSuccess,
     this.onPaymentFailed,
     this.feeIds,
+    required this.childId,
   }) : super(key: key);
 
   @override
@@ -30,6 +32,7 @@ class XenditPaymentDialog extends StatelessWidget {
         onPaymentSuccess: onPaymentSuccess,
         onPaymentFailed: onPaymentFailed,
         feeIds: feeIds,
+        childId: childId,
       ),
     );
   }
@@ -41,12 +44,14 @@ class _XenditPaymentDialogContent extends StatefulWidget {
   final VoidCallback? onPaymentFailed;
   final List<int>? feeIds;
 
+  final int childId;
   const _XenditPaymentDialogContent({
     Key? key,
     required this.invoice,
     required this.onPaymentSuccess,
     this.onPaymentFailed,
     this.feeIds,
+    required this.childId,
   }) : super(key: key);
 
   @override
@@ -207,6 +212,7 @@ class _XenditPaymentDialogContentState
                     invoice: widget.invoice,
                     onPaymentSuccess: _handlePaymentSuccess,
                     onPaymentFailed: _handlePaymentFailed,
+                    childId: widget.childId,
                   ),
                 ),
               ),

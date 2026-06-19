@@ -140,9 +140,12 @@ class _GuardianDetailsContainerState extends State<GuardianDetailsContainer>
       );
       if (file == null) return;
 
+      final childId = context.read<AuthCubit>().getParentDetails().children?.first.id ?? 0;
+
       cubit.updateGuardianPhoto(
         guardian: _guardian,
         file: file,
+        childId: childId,
       );
 
       _showLoadingSnackBar('Mengunggah foto…', Colors.orange[700]!);

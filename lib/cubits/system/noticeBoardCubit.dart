@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:eschool/data/models/academic/announcement.dart';
 import 'package:eschool/data/repositories/academic/announcementRepository.dart';
@@ -135,5 +135,3 @@ class NoticeBoardCubit extends Cubit<NoticeBoardState> {
     }
   }
 }
-
-

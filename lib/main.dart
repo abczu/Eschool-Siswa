@@ -54,6 +54,18 @@ Future<void> setupFCM() async {
   // Izin notifikasi (Android 13+ & iOS)
   await FirebaseMessaging.instance.requestPermission();
 
+  // --- DEBUG TOKEN ---
+  try {
+    String? token = await FirebaseMessaging.instance.getToken();
+    debugPrint('=========================================');
+    debugPrint('📍 TOKEN HP SAYA (Copy ini):');
+    debugPrint(token ?? 'Gagal ambil token');
+    debugPrint('=========================================');
+  } catch (e) {
+    debugPrint('❌ Error ambil token: $e');
+  }
+  // ------------------
+
   // Foreground: tampilkan banner non-modal (tanpa context)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     logRemoteMessageAndroid(message, tag: 'FCM-OPENED');

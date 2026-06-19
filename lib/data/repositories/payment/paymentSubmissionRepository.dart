@@ -129,6 +129,7 @@ class PaymentSubmissionRepository {
   Future<Map<String, dynamic>> submitBulkPayment({
     required int childId,
     required List<int> feesIds,
+    required double amount,
     required int paymentMethodId,
     required File proofFile,
   }) async {
@@ -144,6 +145,7 @@ class PaymentSubmissionRepository {
       formData.fields.add(MapEntry('child_id', childId.toString()));
       formData.fields
           .add(MapEntry('payment_method_id', paymentMethodId.toString()));
+      formData.fields.add(MapEntry('amount', amount.toString()));
 
       // array fees_ids[] (Laravel/PHP style)
       for (final feeId in feesIds) {

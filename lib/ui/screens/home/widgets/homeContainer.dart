@@ -458,58 +458,72 @@ class _HomeContainerState extends State<HomeContainer>
             SizedBox(height: 10),
             Row(
               children: [
-                FadeInLeft(
-                  duration: Duration(milliseconds: 600),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.school_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          "${studentDetails.classSection?.name ?? ''}",
-                          style: TextStyle(
-                            fontSize: 13.0,
+                Flexible(
+                  child: FadeInLeft(
+                    duration: Duration(milliseconds: 600),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.school_rounded,
                             color: Colors.white,
+                            size: 16,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              "${studentDetails.classSection?.name ?? ''}",
+                              style: TextStyle(
+                                fontSize: 13.0,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 SizedBox(width: 10),
-                FadeInRight(
-                  duration: Duration(milliseconds: 600),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          FontAwesomeIcons.idCard,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          "${Utils.getTranslatedLabel(rollNoKey)}: ${studentDetails.rollNumber}",
-                          style: TextStyle(
-                            fontSize: 13.0,
+                Flexible(
+                  child: FadeInRight(
+                    duration: Duration(milliseconds: 600),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FontAwesomeIcons.idCard,
                             color: Colors.white,
+                            size: 14,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              "${Utils.getTranslatedLabel(rollNoKey)}: ${studentDetails.rollNumber}",
+                              style: TextStyle(
+                                fontSize: 13.0,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

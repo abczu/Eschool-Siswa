@@ -9,12 +9,14 @@ class PendingPayment {
   final String externalId; // external_id kita (SCHOOL_x_STUDENT_y_...)
   final double amount;
   final DateTime createdAt;
+  final int childId;
 
   PendingPayment({
     required this.invoiceId,
     required this.externalId,
     required this.amount,
     required this.createdAt,
+    required this.childId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -22,6 +24,7 @@ class PendingPayment {
         'external_id': externalId,
         'amount': amount,
         'created_at': createdAt.toIso8601String(),
+        'child_id': childId,
       };
 
   factory PendingPayment.fromJson(Map<String, dynamic> json) => PendingPayment(
@@ -29,6 +32,7 @@ class PendingPayment {
         externalId: json['external_id'] as String,
         amount: (json['amount'] as num).toDouble(),
         createdAt: DateTime.parse(json['created_at'] as String),
+        childId: json['child_id'] as int? ?? 0,
       );
 }
 

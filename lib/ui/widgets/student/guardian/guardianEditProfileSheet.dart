@@ -7,6 +7,8 @@ import 'package:eschool/ui/widgets/student/guardian/guardianEmailBadge.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:eschool/cubits/auth/authCubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class GuardianEditProfileSheet extends StatefulWidget {
@@ -246,8 +248,10 @@ class _GuardianEditProfileSheetState extends State<GuardianEditProfileSheet>
 
     Navigator.pop(context);
 
+    final childId = (context.read<AuthCubit>().state as Authenticated).children.first.id ?? 0;
+
     widget.photoCubit
-        .updateGuardianPhoto(guardian: updatedGuardian, file: _pendingFile);
+        .updateGuardianPhoto(guardian: updatedGuardian, file: _pendingFile, childId: childId);
 
     _showSavingSnackBar();
   }

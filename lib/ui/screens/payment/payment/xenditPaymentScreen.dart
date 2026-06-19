@@ -16,6 +16,7 @@ class XenditPaymentScreen extends StatelessWidget {
   final VoidCallback onPaymentSuccess;
   final VoidCallback? onPaymentFailed;
   final List<int>? feeIds;
+  final int childId;
 
   const XenditPaymentScreen({
     Key? key,
@@ -23,6 +24,7 @@ class XenditPaymentScreen extends StatelessWidget {
     required this.onPaymentSuccess,
     this.onPaymentFailed,
     this.feeIds,
+    required this.childId,
   }) : super(key: key);
 
   @override
@@ -35,6 +37,7 @@ class XenditPaymentScreen extends StatelessWidget {
         onPaymentSuccess: onPaymentSuccess,
         onPaymentFailed: onPaymentFailed,
         feeIds: feeIds,
+        childId: childId,
       ),
     );
   }
@@ -47,6 +50,7 @@ class XenditPaymentScreen extends StatelessWidget {
         onPaymentSuccess: arguments['onPaymentSuccess'] as VoidCallback,
         onPaymentFailed: arguments['onPaymentFailed'] as VoidCallback?,
         feeIds: arguments['feeIds'] as List<int>?,
+        childId: arguments['childId'] as int,
       ),
     );
   }
@@ -58,6 +62,7 @@ class _XenditPaymentScreenContent extends StatefulWidget {
   final VoidCallback onPaymentSuccess;
   final VoidCallback? onPaymentFailed;
   final List<int>? feeIds;
+  final int childId;
 
   const _XenditPaymentScreenContent({
     Key? key,
@@ -65,6 +70,7 @@ class _XenditPaymentScreenContent extends StatefulWidget {
     required this.onPaymentSuccess,
     this.onPaymentFailed,
     this.feeIds,
+    required this.childId,
   }) : super(key: key);
 
   @override
@@ -203,6 +209,7 @@ class _XenditPaymentScreenContentState
               invoice: widget.invoice,
               onPaymentSuccess: _handlePaymentSuccess,
               onPaymentFailed: _handlePaymentFailed,
+              childId: widget.childId,
             ),
 
             // Top app bar

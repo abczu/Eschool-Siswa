@@ -39,13 +39,8 @@ class StudyMaterial {
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       fileName: json['file_name'] ?? "",
       fileThumbnail: json['file_thumbnail'] ?? "",
-      fileUrl: extract(json['file_url']?.toString() ?? ""),
+      fileUrl: json['file_url']?.toString() ?? "",
       fileExtension: json['file_extension'] ?? "",
     );
-  }
-
-  static String extract(String input) {
-    List<String> parts = input.split(RegExp(r'(?=https?://)'));
-    return parts.isNotEmpty ? parts.last.trim() : '';
   }
 }

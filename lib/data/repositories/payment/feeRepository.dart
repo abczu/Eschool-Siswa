@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:eschool/data/models/payment/childFeeDetails.dart';
 import 'package:eschool/data/models/payment/paymentTransaction.dart';
 import 'package:eschool/utils/system/api.dart';
+import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:flutter/foundation.dart';
 
 class FeeRepository {
@@ -127,9 +128,9 @@ class FeeRepository {
         print('📊 [DEBUG] Fee Summary:');
         print('   Total fees fetched: ${feeDetailsList.length}');
         print(
-            '   Paid fees: ${feeDetailsList.where((f) => f.getFeePaymentStatus() == 'paid').length}');
+            '   Paid fees: ${feeDetailsList.where((f) => f.getFeePaymentStatus() == paidKey).length}');
         print(
-            '   Unpaid fees: ${feeDetailsList.where((f) => f.getFeePaymentStatus() == 'unpaid').length}');
+            '   Unpaid fees: ${feeDetailsList.where((f) => f.getFeePaymentStatus() == unpaidKey || f.getFeePaymentStatus() == partiallyPaidKey).length}');
       }
 
       return feeDetailsList;
@@ -200,7 +201,7 @@ class FeeRepository {
     }
   }
 
-  Future<String> getFeeReceipt(
+  Future<Uint8List> getFeeReceipt(
       {required int childId, required int feeId}) async {
     try {
       final result = await Api.get(queryParameters: {
@@ -208,7 +209,28 @@ class FeeRepository {
         "fees_id": feeId,
       }, url: Api.downloadFeeReceipt, useAuthToken: true);
 
-      return result['pdf'] ?? "";
+      return Api.fetchDocumentBytes(result['data'] ?? result);
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  Future<Uint8List> getFeeReceiptFromHistoryIds(
+      {required int childId, required List<String> paymentHistoryIds}) async {
+    try {
+      final Map<String, dynamic> queryParameters = {
+        "child_id": childId,
+      };
+      for (int i = 0; i < paymentHistoryIds.length; i++) {
+        queryParameters['payment_history_id[$i]'] = paymentHistoryIds[i];
+      }
+
+      final result = await Api.get(
+          queryParameters: queryParameters,
+          url: Api.downloadFeeReceipt,
+          useAuthToken: true);
+
+      return Api.fetchDocumentBytes(result['data'] ?? result);
     } catch (e) {
       throw ApiException(e.toString());
     }

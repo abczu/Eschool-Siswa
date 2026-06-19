@@ -14,6 +14,30 @@ class ApiJson {
   // Private constructor to prevent instantiation
   ApiJson._();
 
+  /// Extracts a user-readable error message from a Dio response.
+  /// Priority: response JSON 'message' field → status code fallback.
+  static String _extractErrorMessage(Response? response, {String? fallbackCode}) {
+    try {
+      final data = response?.data;
+      if (data is Map) {
+        if (data.containsKey('message') && data['message'] != null) {
+          return data['message'].toString();
+        }
+        if (data.containsKey('code') && data['code'] != null) {
+          return data['code'].toString();
+        }
+      }
+    } catch (_) {}
+
+    final statusCode = response?.statusCode;
+    if (statusCode == 401) return ErrorMessageKeysAndCode.unauthenticatedErrorCode;
+    if (statusCode == 429) return ErrorMessageKeysAndCode.tooManyAttemps;
+    if (statusCode == 500 || statusCode == 503) return ErrorMessageKeysAndCode.internetServerErrorCode;
+    if (statusCode == 404) return ErrorMessageKeysAndCode.fileNotFoundErrorCode;
+
+    return fallbackCode ?? ErrorMessageKeysAndCode.defaultErrorMessageCode;
+  }
+
   // Singleton Dio instance with timeout configuration
   // Bug-safety: Reuse instance for better performance
   static final Dio _dio = Dio(
@@ -111,48 +135,10 @@ class ApiJson {
         print('Response: ${e.response?.data}');
       }
 
-      // Handle specific status codes
-      if (e.response?.statusCode == 401) {
-        if (kDebugMode) {
-          print('═══════════════════════════════════════════════════════');
-          print('❌ [ERROR 401] UNAUTHENTICATED');
-          print('═══════════════════════════════════════════════════════');
-          print('📍 URL: $url');
-          print('📤 Request Headers:');
-          print('   ${headers()}');
-          print('📥 Response: ${e.response?.data}');
-          print('───────────────────────────────────────────────────────');
-          print('💡 POSSIBLE CAUSES:');
-          print('   1. Token is missing or empty');
-          print('   2. Token is invalid or expired');
-          print('   3. Token format is wrong (missing "Bearer " prefix)');
-          print('   4. Backend auth:sanctum middleware not deployed');
-          print('───────────────────────────────────────────────────────');
-          print('🔧 TROUBLESHOOTING STEPS:');
-          print('   1. Check if token exists in log above');
-          print('   2. Try logging out and logging in again');
-          print('   3. Test with cURL using token from log');
-          print('   4. Contact backend team if issue persists');
-          print('═══════════════════════════════════════════════════════');
-        }
-        throw ApiException(ErrorMessageKeysAndCode.unauthenticatedErrorCode);
-      }
-      if (e.response?.statusCode == 404) {
-        throw ApiException('Resource not found');
-      }
-      if (e.response?.statusCode == 422) {
-        throw ApiException(e.response?.data['message'] ?? 'Validation error');
-      }
-      if (e.response?.statusCode == 500 || e.response?.statusCode == 503) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
-      }
-
-      // Handle network errors
       if (e.error is SocketException) {
         throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-
-      throw ApiException(ErrorMessageKeysAndCode.defaultErrorMessageCode);
+      throw ApiException(_extractErrorMessage(e.response));
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -203,21 +189,10 @@ class ApiJson {
         print('Response: ${e.response?.data}');
       }
 
-      if (e.response?.statusCode == 401) {
-        throw ApiException(ErrorMessageKeysAndCode.unauthenticatedErrorCode);
-      }
-      if (e.response?.statusCode == 404) {
-        throw ApiException('Resource not found');
-      }
-      if (e.response?.statusCode == 500 || e.response?.statusCode == 503) {
-        throw ApiException(ErrorMessageKeysAndCode.internetServerErrorCode);
-      }
-
       if (e.error is SocketException) {
         throw ApiException(ErrorMessageKeysAndCode.noInternetCode);
       }
-
-      throw ApiException(ErrorMessageKeysAndCode.defaultErrorMessageCode);
+      throw ApiException(_extractErrorMessage(e.response));
     } on ApiException {
       rethrow;
     } catch (e) {

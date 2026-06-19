@@ -11,12 +11,14 @@ class PaymentWebView extends StatefulWidget {
   final XenditInvoice invoice;
   final VoidCallback onPaymentSuccess;
   final VoidCallback? onPaymentFailed;
+  final int childId;
 
   const PaymentWebView({
     Key? key,
     required this.invoice,
     required this.onPaymentSuccess,
     this.onPaymentFailed,
+    required this.childId,
   }) : super(key: key);
 
   @override
@@ -88,9 +90,10 @@ class _PaymentWebViewState extends State<PaymentWebView> {
     });
 
     try {
-      await context
-          .read<XenditInvoiceCubit>()
-          .checkInvoiceStatus(widget.invoice.id);
+      await context.read<XenditInvoiceCubit>().checkInvoiceStatus(
+            invoiceId: widget.invoice.id,
+            childId: widget.childId,
+          );
 
       final state = context.read<XenditInvoiceCubit>().state;
 
