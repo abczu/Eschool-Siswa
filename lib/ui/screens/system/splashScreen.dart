@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(25.0),
-                child: SvgPicture.asset(
+                child: Image.asset(
                   Utils.getImagePath("rizkyScreen.jpg"),
                 ),
               ),
