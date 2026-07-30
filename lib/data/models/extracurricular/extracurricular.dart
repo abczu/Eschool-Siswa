@@ -66,16 +66,94 @@ class Extracurricular {
   }
 
   factory Extracurricular.fromJson(Map<String, dynamic> json) {
+    // Logic Pencarian Jadwal (Smart Detection)
+    String? scheduleData;
+
+    // 1. Helper function for list formatting
+    String? formatScheduleList(dynamic list) {
+      if (list is! List || list.isEmpty) return null;
+      
+      String formatTime(dynamic time) {
+        if (time == null) return '';
+        String t = time.toString();
+        if (t.contains(':') && t.split(':').length == 3) {
+          return t.substring(0, 5); // Keep only HH:mm
+        }
+        return t;
+      }
+      
+      return list.map((t) {
+        if (t is Map) {
+          String day = t['day'] ?? t['hari'] ?? '';
+          
+          // Translate English days to Indonesian
+          final dayTranslations = {
+            'Monday': 'Senin',
+            'Tuesday': 'Selasa',
+            'Wednesday': 'Rabu',
+            'Thursday': 'Kamis',
+            'Friday': 'Jumat',
+            'Saturday': 'Sabtu',
+            'Sunday': 'Minggu',
+          };
+          if (dayTranslations.containsKey(day)) {
+            day = dayTranslations[day]!;
+          }
+          
+          final startTime = formatTime(t['start_time'] ?? t['jam_mulai'] ?? t['time'] ?? t['jam'] ?? '');
+          final endTime = formatTime(t['end_time'] ?? t['jam_selesai'] ?? '');
+          
+          if (startTime.isNotEmpty && endTime.isNotEmpty) {
+            return '$day ($startTime - $endTime)';
+          } else if (startTime.isNotEmpty) {
+            return '$day ($startTime)';
+          }
+          return day.toString();
+        }
+        return t.toString();
+      }).where((s) => s.isNotEmpty).join('\n');
+    }
+
+    // 2. Try to find schedule in various fields
+    if (json['schedule'] != null) {
+      if (json['schedule'] is List) {
+        scheduleData = formatScheduleList(json['schedule']);
+      } else if (json['schedule'].toString().isNotEmpty) {
+        scheduleData = json['schedule'].toString();
+      }
+    }
+    
+    if (scheduleData == null && json['jadwal'] != null) {
+      if (json['jadwal'] is List) {
+        scheduleData = formatScheduleList(json['jadwal']);
+      } else if (json['jadwal'].toString().isNotEmpty) {
+        scheduleData = json['jadwal'].toString();
+      }
+    }
+    
+    if (scheduleData == null && json['timetables'] != null) {
+      if (json['timetables'] is List) {
+        scheduleData = formatScheduleList(json['timetables']);
+      } else if (json['timetables'].toString().isNotEmpty) {
+        scheduleData = json['timetables'].toString();
+      }
+    }
+
     return Extracurricular(
       id: _parseInt(json['id']),
-      title: json['name']?.toString(), // API menggunakan 'name' bukan 'title'
+      title: json['name']?.toString(),
       description: json['description']?.toString(),
       image: json['image']?.toString(),
-      instructor: json['coach_name']?.toString() ?? 
-                  json['coach']?['full_name']?.toString() ??
-                  '${json['coach']?['first_name'] ?? ''} ${json['coach']?['last_name'] ?? ''}'.trim(), // API menggunakan coach.first_name + coach.last_name
+      instructor: json['coach_name']?.toString() ??
+          json['coach']?['full_name']?.toString() ??
+          '${json['coach']?['first_name'] ?? ''} ${json['coach']?['last_name'] ?? ''}'
+              .trim(),
       coachId: _parseInt(json['coach_id']),
-      schedule: json['schedule']?.toString(),
+      schedule: (scheduleData == null ||
+              scheduleData.isEmpty ||
+              scheduleData == 'null')
+          ? null
+          : scheduleData,
       location: json['location']?.toString(),
       maxParticipants: _parseInt(json['max_participants']),
       currentParticipants: _parseInt(json['current_participants']),

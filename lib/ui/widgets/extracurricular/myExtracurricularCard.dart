@@ -1,10 +1,12 @@
 import 'package:eschool/cubits/extracurricular/extracurricularCubit.dart';
 import 'package:eschool/data/models/extracurricular/extracurricular.dart';
 import 'package:eschool/data/models/extracurricular/studentExtracurricular.dart';
+import 'package:eschool/app/routes.dart';
 import 'package:eschool/ui/widgets/extracurricular/modernPatternPainter.dart';
 import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 
 class MyExtracurricularCard extends StatelessWidget {
   final StudentExtracurricular studentExtracurricular;
@@ -58,6 +60,12 @@ class MyExtracurricularCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          onTap: () {
+            Get.toNamed(
+              Routes.extracurricularDetails,
+              arguments: {'extracurricular': extracurricular},
+            );
+          },
           borderRadius: BorderRadius.circular(32),
           highlightColor: Colors.transparent,
           splashColor: colorScheme['primary']!.withValues(alpha: 0.05),
@@ -74,19 +82,22 @@ class MyExtracurricularCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMyExtracurricularCardHeader(
-                        extracurricular, colorScheme, statusColor, statusText),
-                    _buildMyExtracurricularCardContent(
-                        studentExtracurricular, extracurricular, colorScheme, context),
-                  ],
-                ),
-              ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMyExtracurricularCardHeader(
+                          extracurricular, colorScheme, statusColor, statusText),
+                      _buildMyExtracurricularCardContent(
+                          studentExtracurricular, extracurricular, colorScheme, context),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -351,14 +362,12 @@ class MyExtracurricularCard extends StatelessWidget {
         String displayName = _getInstructorNameSimple(extracurricular, context);
 
         return Text(
-          displayName,
+          _formatInstructorName(displayName),
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: colorScheme['neutral1'],
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         );
       },
     );
@@ -448,5 +457,16 @@ class MyExtracurricularCard extends StatelessWidget {
         ],
       ),
     );
+  }
+  String _formatInstructorName(String name) {
+    if (name == '-' || name == 'Tidak ada pembimbing') return name;
+
+    List<String> parts = name.split(' ');
+    if (parts.length > 2 &&
+        parts.first.toLowerCase() == parts.last.toLowerCase()) {
+      parts.removeLast();
+      return parts.join(' ');
+    }
+    return name;
   }
 }

@@ -647,6 +647,33 @@ class Utils {
 
     return output;
   }
+
+  static String fixImageUrl(String url) {
+    if (url.isEmpty) return url;
+
+    // First, convert http:// to https://
+    String fixedUrl = url;
+    if (fixedUrl.startsWith('http://')) {
+      fixedUrl = fixedUrl.replaceFirst('http://', 'https://');
+    }
+
+    // Check for duplicate prepended URL
+    final lastHttpIndex = fixedUrl.lastIndexOf('http://');
+    final lastHttpsIndex = fixedUrl.lastIndexOf('https://');
+
+    if (lastHttpIndex > 0) {
+      fixedUrl = fixedUrl.substring(lastHttpIndex);
+    } else if (lastHttpsIndex > 0) {
+      fixedUrl = fixedUrl.substring(lastHttpsIndex);
+    }
+
+    // Convert to https again just in case the extracted URL was http
+    if (fixedUrl.startsWith('http://')) {
+      fixedUrl = fixedUrl.replaceFirst('http://', 'https://');
+    }
+
+    return fixedUrl;
+  }
 }
 
 extension DateTimeExtension on DateTime {

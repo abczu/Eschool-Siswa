@@ -26,6 +26,9 @@ const String savedEmailKey = "savedEmail";
 const String pendingNotificationRouteKey = "pendingNotificationRoute";
 const String pendingNotificationArgumentsKey = "pendingNotificationArguments";
 
+// Tracking FCM topic subscriptions
+const String subscribedClassSectionIdsKey = "subscribedClassSectionIds";
+
 //Student subject box keys
 
 const String studentSubjectsBoxKey = "studentSubjectsBox";

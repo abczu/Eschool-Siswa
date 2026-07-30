@@ -280,7 +280,8 @@ class LeaveCard extends StatelessWidget {
                     ),
 
                   // ─── Attachment row ────────────────────────────────────
-                  if (leave.leaveDetail.any((d) => d.isFile)) ...[
+                  // Cek lampiran dari fileDetail (sumber utama API) ATAU leaveDetail yang isFile
+                  if (leave.fileDetail.isNotEmpty || leave.leaveDetail.any((d) => d.isFile)) ...[
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -307,9 +308,19 @@ class LeaveCard extends StatelessWidget {
                         const Spacer(),
                         ElevatedButton.icon(
                           onPressed: () {
-                            final fileDetail = leave.leaveDetail
-                                .firstWhere((d) => d.isFile);
-                            LeaveImageViewer.show(context, fileDetail);
+                            // Prioritas: fileDetail (dari API), fallback ke leaveDetail
+                            LeaveDetail? file;
+                            if (leave.fileDetail.isNotEmpty) {
+                              file = leave.fileDetail.first;
+                            } else {
+                              file = leave.leaveDetail.cast<LeaveDetail?>().firstWhere(
+                                (d) => d?.isFile == true,
+                                orElse: () => null,
+                              );
+                            }
+                            if (file != null) {
+                              LeaveImageViewer.show(context, file);
+                            }
                           },
                           icon: const Icon(Icons.visibility_rounded, size: 16),
                           label: const Text("Lihat"),

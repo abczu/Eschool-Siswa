@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:eschool/data/models/academic/assignment.dart';
 import 'package:eschool/utils/system/api.dart';
-import 'package:eschool/utils/system/imageCompress.dart'; // <-- util kompres (DartImagePreprocessor)
+// imageCompress import removed — kompresi sudah ditangani oleh UI mixin
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
@@ -23,6 +23,8 @@ class AssignmentRepository {
     return '${size.toStringAsFixed(1)} ${units[unit]}';
   }
 
+
+
   MediaType _mediaTypeForExt(String ext) {
     switch (ext) {
       case '.jpg':
@@ -39,8 +41,32 @@ class AssignmentRepository {
       case '.tif':
       case '.tiff':
         return MediaType('image', 'tiff');
+      case '.webp':
+        return MediaType('image', 'webp');
+      case '.pdf':
+        return MediaType('application', 'pdf');
+      case '.doc':
+        return MediaType('application', 'msword');
+      case '.docx':
+        return MediaType('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document');
+      case '.ppt':
+        return MediaType('application', 'vnd.ms-powerpoint');
+      case '.pptx':
+        return MediaType('application', 'vnd.openxmlformats-officedocument.presentationml.presentation');
+      case '.xls':
+        return MediaType('application', 'vnd.ms-excel');
+      case '.xlsx':
+        return MediaType('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      case '.csv':
+        return MediaType('text', 'csv');
+      case '.txt':
+        return MediaType('text', 'plain');
+      case '.zip':
+        return MediaType('application', 'zip');
+      case '.rar':
+        return MediaType('application', 'x-rar-compressed');
       default:
-        return MediaType('image', 'jpeg');
+        return MediaType('application', 'octet-stream');
     }
   }
 
@@ -144,9 +170,7 @@ class AssignmentRepository {
     required String answerText,
   }) async {
     try {
-      // Target kompres super kecil ~10 KB
-      const int kTargetBytes = 10 * 1024; // 10 KB
-      const int kStartMaxDim = 720; // start resize
+
 
       final formData = FormData();
 
@@ -154,47 +178,51 @@ class AssignmentRepository {
       formData.fields.add(MapEntry("assignment_id", assignmentId.toString()));
       formData.fields.add(MapEntry("text", answerText));
 
-      // Siapkan file (kompres + log)
+      // Siapkan file — file sudah dikompres oleh UI (OptimizedFileCompressionMixin),
+      // jadi di sini cukup kirim langsung tanpa proses ulang
       for (int i = 0; i < filePaths.length; i++) {
-        final path = filePaths[i];
-        final f = File(path);
+        final filePath = filePaths[i];
+        final f = File(filePath);
 
         if (!await f.exists()) {
           if (kDebugMode)
-            debugPrint('[Assignment] SKIP: file tidak ditemukan: $path');
+            debugPrint('[Assignment] SKIP: file tidak ditemukan: $filePath');
           continue;
         }
 
-        final before = await f.length();
-
-        // Kompres agresif (flatten alpha -> JPEG, turunkan kualitas & dimensi, boleh grayscale)
-        final File compressed = await DartImagePreprocessor.processFile(f,
-            maxBytes: kTargetBytes,
-            maxDimension: kStartMaxDim,
-            flattenAlphaToWhite: true);
-
-        final after = await compressed.length();
+        final originalExt = p.extension(f.path).toLowerCase();
+        final originalName = p.basename(f.path);
+        final fileSize = await f.length();
+        final mediaType = _mediaTypeForExt(originalExt);
 
         if (kDebugMode) {
-          final name = p.basename(f.path);
-          final saved = before - after > 0 ? before - after : 0;
-          final pct = before > 0 ? (saved / before * 100) : 0.0;
-          debugPrint(
-              '[Assignment] $name | ${_fmtBytes(before)} → ${_fmtBytes(after)} '
-              '(hemat ${_fmtBytes(saved)} ~ ${pct.toStringAsFixed(1)}%)');
+          debugPrint('[Assignment] File[$i]: $originalName | ${_fmtBytes(fileSize)} | $mediaType');
         }
 
-        final outExt = p.extension(compressed.path).toLowerCase();
-        final mediaType = _mediaTypeForExt(outExt);
-
         final mf = await MultipartFile.fromFile(
-          compressed.path,
-          filename: p.basename(compressed.path), // pakai nama hasil kompres
+          f.path,
+          filename: originalName,
           contentType: mediaType,
         );
 
-        // Laravel-friendly: files[] atau files[$i]
         formData.files.add(MapEntry('files[]', mf));
+      }
+
+      // === DEBUG: Log semua field dan file sebelum kirim ===
+      if (kDebugMode) {
+        debugPrint('\n========== SUBMIT ASSIGNMENT DEBUG ==========');
+        debugPrint('Fields:');
+        for (var field in formData.fields) {
+          debugPrint('  ${field.key}: ${field.value}');
+        }
+        debugPrint('Files (${formData.files.length}):');
+        for (var file in formData.files) {
+          debugPrint('  key: ${file.key}');
+          debugPrint('    filename: ${file.value.filename}');
+          debugPrint('    contentType: ${file.value.contentType}');
+          debugPrint('    length: ${file.value.length}');
+        }
+        debugPrint('==============================================\n');
       }
 
       final result = await Api.post(

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eschool/data/models/academic/studyMaterial.dart';
 import 'package:eschool/ui/screens/system/playVideo/widgets/videoControlsContainer.dart';
 import 'package:eschool/ui/screens/system/playVideo/widgets/playPauseButton.dart';
+import 'package:eschool/ui/widgets/system/videoDoubleTapSkipOverlay.dart';
 import 'package:eschool/ui/widgets/system/customCircularProgressIndicator.dart';
 import 'package:eschool/ui/widgets/system/svgButton.dart';
 import 'package:eschool/utils/system/utils.dart';
@@ -15,10 +16,13 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 class PlayVideoScreen extends StatefulWidget {
   final List<StudyMaterial> relatedVideos;
   final StudyMaterial currentlyPlayingVideo;
+  final Duration initialPosition;
+
   const PlayVideoScreen({
     Key? key,
     required this.relatedVideos,
     required this.currentlyPlayingVideo,
+    this.initialPosition = Duration.zero,
   }) : super(key: key);
 
   @override
@@ -30,6 +34,8 @@ class PlayVideoScreen extends StatefulWidget {
       currentlyPlayingVideo:
           arguments['currentlyPlayingVideo'] as StudyMaterial,
       relatedVideos: arguments['relatedVideos'] as List<StudyMaterial>,
+      initialPosition:
+          arguments['initialPosition'] as Duration? ?? Duration.zero,
     );
   }
 }
@@ -72,6 +78,8 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
       loadVideoController();
     }
     super.initState();
+    // Munculkan kontrol otomatis saat layar dibuka
+    controlsMenuAnimationController.forward();
   }
 
   //To load non youtube video
@@ -80,6 +88,9 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
       Uri.parse(currentlyPlayingStudyMaterialVideo.fileUrl),
       videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
     )..initialize().then((value) {
+        if (widget.initialPosition != Duration.zero) {
+          _videoPlayerController?.seekTo(widget.initialPosition);
+        }
         setState(() {});
         _videoPlayerController?.play();
       });
@@ -96,9 +107,11 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
 
       _youtubePlayerController = YoutubePlayerController(
         initialVideoId: youTubeId,
-        flags: const YoutubePlayerFlags(
+        flags: YoutubePlayerFlags(
           hideThumbnail: true,
           hideControls: true,
+          autoPlay: true, // Pastikan autoPlay aktif
+          startAt: widget.initialPosition.inSeconds,
         ),
       );
       assignedVideoController = true;
@@ -126,82 +139,80 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
   }
 
   //To show play/pause button and and other control related details
-  Widget _buildVideoControlMenuContainer(Orientation orientation) {
-    return AnimatedBuilder(
-      animation: controlsMenuAnimationController,
-      builder: (context, child) {
-        return Opacity(
-          opacity: controlsMenuAnimation.value,
-          child: GestureDetector(
-            onTap: () {
-              if (controlsMenuAnimationController.isCompleted) {
-                controlsMenuAnimationController.reverse();
-              } else {
-                controlsMenuAnimationController.forward();
-              }
-            },
-            child: Container(
-              color: Colors.black45,
-              child: Stack(
-                children: [
-                  Align(
-                    alignment: AlignmentDirectional.topStart,
-                    child: Padding(
-                      padding: EdgeInsetsDirectional.only(
-                        top: orientation == Orientation.landscape
-                            ? Utils.screenContentHorizontalPadding
-                            : 0,
-                        start: Utils.screenContentHorizontalPadding,
-                      ),
-                      child: SvgButton(
-                        onTap: () {
-                          if (orientation == Orientation.landscape) {
-                            SystemChrome.setPreferredOrientations(
-                              [DeviceOrientation.portraitUp],
-                            );
-                            return;
-                          }
-                          Get.back();
-                        },
-                        svgIconUrl: Utils.getBackButtonPath(context),
-                      ),
-                    ),
-                  ),
-                  //
-                  Center(
-                    child: PlayPauseButtonContainer(
-                      isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                              .studyMaterialType ==
-                          StudyMaterialType.youtubeVideo,
-                      controlsAnimationController:
-                          controlsMenuAnimationController,
-                      youtubePlayerController: _youtubePlayerController,
-                      videoPlayerController: _videoPlayerController,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: orientation == Orientation.landscape
-                          ? EdgeInsets.only(bottom: 15, left: 10, right: 10)
-                          : EdgeInsets.all(0),
-                      child: VideoControlsContainer(
-                        isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                                .studyMaterialType ==
-                            StudyMaterialType.youtubeVideo,
-                        youtubePlayerController: _youtubePlayerController,
-                        videoPlayerController: _videoPlayerController,
-                        controlsAnimationController:
-                            controlsMenuAnimationController,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  //Now separated from the dimming background to allow double tap to work
+  Widget _buildVideoControlButtons(Orientation orientation) {
+    return Stack(
+      children: [
+        Align(
+          alignment: AlignmentDirectional.topStart,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(
+              top: orientation == Orientation.landscape
+                  ? Utils.screenContentHorizontalPadding
+                  : 0,
+              start: Utils.screenContentHorizontalPadding,
+            ),
+            child: SvgButton(
+              onTap: () {
+                // Get current position to return to previous screen
+                Duration currentPosition = Duration.zero;
+                if (currentlyPlayingStudyMaterialVideo.studyMaterialType ==
+                    StudyMaterialType.youtubeVideo) {
+                  currentPosition = _youtubePlayerController?.value.position ??
+                      Duration.zero;
+                } else {
+                  currentPosition =
+                      _videoPlayerController?.value.position ?? Duration.zero;
+                }
+
+                // Jika video dari Galeri (tidak ada video terkait), langsung kembali ke Galeri
+                if (widget.relatedVideos.isEmpty) {
+                  Get.back(result: currentPosition);
+                  return;
+                }
+
+                if (orientation == Orientation.landscape) {
+                  SystemChrome.setPreferredOrientations(
+                    [DeviceOrientation.portraitUp],
+                  );
+                  return;
+                }
+                Get.back(result: currentPosition);
+              },
+              svgIconUrl: Utils.getBackButtonPath(context),
             ),
           ),
-        );
-      },
+        ),
+        Center(
+          child: PlayPauseButtonContainer(
+            isYoutubeVideo: currentlyPlayingStudyMaterialVideo
+                    .studyMaterialType ==
+                StudyMaterialType.youtubeVideo,
+            controlsAnimationController:
+                controlsMenuAnimationController,
+            youtubePlayerController: _youtubePlayerController,
+            videoPlayerController: _videoPlayerController,
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: orientation == Orientation.landscape
+                ? const EdgeInsets.only(bottom: 15, left: 10, right: 10)
+                : EdgeInsets.zero,
+            child: VideoControlsContainer(
+              isGalleryVideo: widget.relatedVideos.isEmpty,
+              isYoutubeVideo: currentlyPlayingStudyMaterialVideo
+                      .studyMaterialType ==
+                  StudyMaterialType.youtubeVideo,
+              youtubePlayerController: _youtubePlayerController,
+              videoPlayerController: _videoPlayerController,
+              controlsAnimationController:
+                  controlsMenuAnimationController,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -214,17 +225,16 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
         padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
         child: SizedBox(
           width: MediaQuery.of(context).size.width,
-          //changed the height of video container based on orientation
           height: orientation == Orientation.landscape
               ? MediaQuery.of(context).size.height
               : MediaQuery.of(context).size.height *
                   _videoContainerPotraitHeightPercentage,
           child: Stack(
             children: [
-              // ✅ Gunakan Center + AspectRatio untuk menjaga proporsi video
+              // 1. Base Layer: The Video
               Center(
                 child: AspectRatio(
-                  aspectRatio: 16 / 9, // Standard video aspect ratio
+                  aspectRatio: 16 / 9,
                   child: currentlyPlayingStudyMaterialVideo.studyMaterialType ==
                           StudyMaterialType.youtubeVideo
                       ? YoutubePlayerBuilder(
@@ -233,14 +243,10 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
                             controller: _youtubePlayerController!,
                             aspectRatio: 16 / 9,
                           ),
-                          builder: (context, player) {
-                            return player;
-                          },
+                          builder: (context, player) => player,
                         )
                       : _videoPlayerController!.value.isInitialized
-                          ? VideoPlayer(
-                              _videoPlayerController!,
-                            )
+                          ? VideoPlayer(_videoPlayerController!)
                           : Container(
                               decoration: BoxDecoration(
                                 image: DecorationImage(
@@ -259,8 +265,45 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
                 ),
               ),
 
-              //show controls
-              _buildVideoControlMenuContainer(orientation),
+              // 2. Interaction Layer: Double tap skip + Single tap toggle
+              // This is ON TOP of the video but BELOW the dimming background when hidden
+              // and ABOVE the dimming background when shown to ensure double tap always works.
+              VideoDoubleTapSkipOverlay(
+                youtubePlayerController: _youtubePlayerController,
+                videoPlayerController: _videoPlayerController,
+                onTap: () {
+                  if (controlsMenuAnimationController.isCompleted) {
+                    controlsMenuAnimationController.reverse();
+                  } else {
+                    controlsMenuAnimationController.forward();
+                  }
+                },
+                child: AnimatedBuilder(
+                  animation: controlsMenuAnimationController,
+                  builder: (context, _) {
+                    return Container(
+                      color: Colors.black.withValues(
+                        alpha: controlsMenuAnimation.value * 0.45,
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // 3. UI Layer: Controls (Buttons)
+              // Wrapped in Opacity and IgnorePointer when hidden
+              AnimatedBuilder(
+                animation: controlsMenuAnimationController,
+                builder: (context, _) {
+                  return Opacity(
+                    opacity: controlsMenuAnimation.value,
+                    child: IgnorePointer(
+                      ignoring: !controlsMenuAnimationController.isCompleted,
+                      child: _buildVideoControlButtons(orientation),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -419,8 +462,7 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
                     ? const SizedBox()
                     : _buildRelatedVideos(),
 
-                //need to show the container when changing the youtube video or other video
-                //It has the same size as youtube player container
+                //Dimming background when video changes
                 Container(
                   width: MediaQuery.of(context).size.width,
                   height: MediaQuery.of(context).size.height *
@@ -433,8 +475,7 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
                   ),
                 ),
 
-                //If controller is availble to play video then
-                //show video container
+                //Video container
                 assignedVideoController
                     ? _buildPlayVideoContainer(orientation)
                     : const SizedBox()

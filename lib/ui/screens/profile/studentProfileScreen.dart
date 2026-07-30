@@ -2,6 +2,7 @@ import 'package:eschool/cubits/system/schoolConfigurationCubit.dart';
 import 'package:eschool/cubits/student/studentAllProfileDetailsCubit.dart';
 import 'package:eschool/data/models/auth/student.dart';
 import 'package:eschool/data/repositories/student/studentRepository.dart';
+import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:eschool/ui/styles/colors.dart';
 import 'package:eschool/ui/widgets/system/customBackButton.dart';
 import 'package:eschool/ui/widgets/system/customUserProfileImageWidget.dart';
@@ -175,10 +176,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                       Text(
                         label,
                         style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           fontWeight: FontWeight.w400,
                           fontSize: 13.0,
                         ),
@@ -277,6 +275,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
       _animationController.forward(from: 0.0);
     }
 
+    final String activeSchoolCode = (studentDetails.school?.code != null &&
+            studentDetails.school!.code!.isNotEmpty)
+        ? studentDetails.school!.code!
+        : (studentDetails.schoolCode != null &&
+                studentDetails.schoolCode!.isNotEmpty)
+            ? studentDetails.schoolCode!
+            : AuthRepository().schoolCode;
+
     return Align(
       alignment: Alignment.topCenter,
       child: SingleChildScrollView(
@@ -349,7 +355,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(50),
                             child: CustomUserProfileImageWidget(
-                              profileUrl: studentDetails.image ?? "",
+                              profileUrl: Utils.fixImageUrl(
+                                  (studentDetails.childUserDetails?.image != null &&
+                                          studentDetails.childUserDetails!.image!.isNotEmpty)
+                                      ? studentDetails.childUserDetails!.image!
+                                      : (studentDetails.image ?? "")),
                               context: context,
                             ),
                           ),
@@ -401,7 +411,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                   _buildProfileDetailsTile(
                     label: Utils.getTranslatedLabel(schoolKey),
                     value: Utils.formatEmptyValue(
-                        ("${studentDetails.school?.name} (${studentDetails.school?.code})")),
+                      studentDetails.school?.name == null
+                          ? ""
+                          : activeSchoolCode.isNotEmpty
+                              ? "${studentDetails.school!.name} ($activeSchoolCode)"
+                              : studentDetails.school!.name!,
+                    ),
                     iconUrl: Utils.getImagePath("school.svg"),
                   ),
                   _buildProfileDetailsTile(

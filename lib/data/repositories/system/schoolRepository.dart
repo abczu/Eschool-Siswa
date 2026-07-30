@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:eschool/data/models/system/gallery.dart';
 import 'package:eschool/data/models/system/schoolConfiguration.dart';
@@ -44,9 +45,32 @@ class SchoolRepository {
           url: useParentApi ? Api.getParentSliders : Api.getStudentSliders,
           useAuthToken: true);
 
-      return (result['data'] as List)
-          .map((sliderDetails) => SliderDetails.fromJson(sliderDetails))
+      // === DEBUG: Log raw API response structure ===
+      debugPrint("=== SLIDERS RAW RESPONSE ===");
+      debugPrint("result type: ${result.runtimeType}");
+      debugPrint("result keys: ${result.keys.toList()}");
+      debugPrint("result['data'] type: ${result['data'].runtimeType}");
+      debugPrint("result['data'] value: ${result['data']}");
+      // === END DEBUG ===
+
+      // Handle paginated response: { "data": { "data": [...] } }
+      final dynamic rawData = result['data'];
+      final List sliderList;
+      if (rawData is List) {
+        sliderList = rawData;
+      } else if (rawData is Map && rawData.containsKey('data')) {
+        debugPrint("=== SLIDERS: Detected paginated response! Unwrapping inner 'data' ===");
+        sliderList = rawData['data'] as List;
+      } else {
+        debugPrint("=== SLIDERS: Unexpected data format, defaulting to empty ===");
+        sliderList = [];
+      }
+
+      final sliders = sliderList
+          .map((sliderDetails) => SliderDetails.fromJson(Map<String, dynamic>.from(sliderDetails)))
           .toList();
+      debugPrint("=== SLIDERS PARSED COUNT: ${sliders.length} ===");
+      return sliders;
     } catch (e) {
       throw ApiException(e.toString());
     }

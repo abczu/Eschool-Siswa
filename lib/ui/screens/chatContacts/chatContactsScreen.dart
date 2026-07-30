@@ -352,7 +352,7 @@ class _ChatContactsScreenState extends State<ChatContactsScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: CachedNetworkImage(
-                    imageUrl: contact.user.image,
+                    imageUrl: Utils.fixImageUrl(contact.user.image),
                     fit: BoxFit.cover,
                     width: 45,
                     height: 45,

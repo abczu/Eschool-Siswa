@@ -45,6 +45,12 @@ class _SlidersContainerState extends State<SlidersContainer> {
 
   @override
   Widget build(BuildContext context) {
+    // === DEBUG: Log what SlidersContainer receives ===
+    debugPrint("=== SlidersContainer received length: ${widget.sliders.length} ===");
+    for (int i = 0; i < widget.sliders.length; i++) {
+      debugPrint("=== Slider[$i]: id=${widget.sliders[i].id}, image=${widget.sliders[i].image} ===");
+    }
+    // === END DEBUG ===
     return widget.sliders.isEmpty
         ? const SizedBox.shrink()
         : Column(

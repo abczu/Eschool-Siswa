@@ -14,6 +14,8 @@ import 'package:eschool/data/repositories/student/leavesRepository.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:eschool/utils/system/optimizedFileCompressionUtils.dart';
 
 class ApplyLeavesContainer extends StatefulWidget {
   final int? childId;
@@ -203,6 +205,203 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
     }
   }
 
+  Future<void> _compressAndSetFile(File rawFile) async {
+    _showBlockingDialog("Mengoptimalkan file…");
+    try {
+      final compressedFile = await OptimizedFileCompressionUtils.compressFile(
+        file: rawFile,
+        maxSizeInMB: 0.3,
+        customQuality: 80,
+        forceCompress: true,
+      );
+
+      _safePopDialog();
+
+      final originalSize = await rawFile.length();
+      final compressedSize = await compressedFile.length();
+
+      setState(() {
+        _selectedFile = compressedFile.path;
+        _selectedIsRemote = false;
+      });
+
+      showCompressionResult(
+        context,
+        originalSize: originalSize,
+        compressedSize: compressedSize,
+        fileName: path.basename(rawFile.path),
+      );
+    } catch (e) {
+      _safePopDialog();
+      debugPrint("Gagal mengompresi file: $e");
+      setState(() {
+        _selectedFile = rawFile.path;
+        _selectedIsRemote = false;
+      });
+    }
+  }
+
+  Future<void> _pickFromCamera() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 85,
+      );
+
+      if (photo == null) return;
+      await _compressAndSetFile(File(photo.path));
+    } catch (e) {
+      debugPrint('Error pick from camera: $e');
+      _showSnackBar("Gagal mengambil foto dari kamera", isError: true);
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+      await _compressAndSetFile(File(image.path));
+    } catch (e) {
+      debugPrint('Error pick from gallery: $e');
+      _showSnackBar("Gagal memilih foto dari galeri", isError: true);
+    }
+  }
+
+  void _showAttachmentSourceBS(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Pilih Lampiran",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Pilih file, foto dari galeri, atau ambil foto baru dengan kamera sebagai lampiran izin.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        _buildBSOption(
+                          icon: Icons.camera_alt_rounded,
+                          label: "Kamera",
+                          onTap: () {
+                            Navigator.pop(context);
+                            _pickFromCamera();
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        _buildBSOption(
+                          icon: Icons.photo_library_rounded,
+                          label: "Galeri",
+                          onTap: () {
+                            Navigator.pop(context);
+                            _pickFromGallery();
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        _buildBSOption(
+                          icon: Icons.insert_drive_file_rounded,
+                          label: "Dokumen/PDF",
+                          onTap: () {
+                            Navigator.pop(context);
+                            _pickFile();
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBSOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 28,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     // Deteksi apakah pesan sukses
 
@@ -307,6 +506,7 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
           reason: _reasonController.text,
           leaveDetails: leaveDetails,
           files: filesToSend,
+          leaveId: widget.data?.id,
         );
   }
 
@@ -938,7 +1138,7 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: _pickFile,
+            onTap: () => _showAttachmentSourceBS(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               child: Row(
@@ -1020,7 +1220,7 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: isSubmitting || _hasTodayLeave
+              onPressed: isSubmitting || (!isUpdate && _hasTodayLeave)
                   ? null
                   : () => _submitLeave(context),
               style: ElevatedButton.styleFrom(

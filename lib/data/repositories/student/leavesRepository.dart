@@ -91,6 +91,7 @@ class LeavesRepository {
     required String reason,
     required List<Map<String, String>> leaveDetails,
     List<String>? files,
+    int? leaveId,
   }) async {
     try {
       final formData = FormData();
@@ -99,12 +100,18 @@ class LeavesRepository {
       if (kDebugMode) {
         print("Child ID: $childId");
         print("Reason: $reason");
+        print("Leave ID: $leaveId");
       }
 
       formData.fields.addAll([
         MapEntry('child_id', childId.toString()),
         MapEntry('reason', reason),
       ]);
+
+      if (leaveId != null) {
+        formData.fields.add(MapEntry('id', leaveId.toString()));
+        formData.fields.add(MapEntry('leave_id', leaveId.toString()));
+      }
 
       // Debug leave details
       if (kDebugMode) {
@@ -123,40 +130,45 @@ class LeavesRepository {
         ]);
       }
 
-      // Files (upload-only, tanpa kompres)
+      // Files - Backend expects: files[0], files[1], ...
       if (files != null && files.isNotEmpty) {
         if (kDebugMode) {
-          print("\nFiles to upload:");
-          files.asMap().forEach((index, filePath) {
-            print("File $index: $filePath");
-          });
+          print("\nFiles to upload: ${files.length} file(s)");
         }
 
         for (int i = 0; i < files.length; i++) {
           try {
             final original = File(files[i]);
-            if (!await original.exists()) continue;
+            if (!await original.exists()) {
+              if (kDebugMode) print("File tidak ditemukan: ${files[i]}");
+              continue;
+            }
 
-            final ukuranAwal = _fmtBytes(original.lengthSync());
-            if (kDebugMode) print("ukuran (awal): $ukuranAwal");
+            final fileSize = original.lengthSync();
+            if (kDebugMode) print("File[$i]: ${files[i]} (${_fmtBytes(fileSize)})");
 
-            // Tidak ada kompresi — langsung pakai file asli
-            final toUpload = original;
+            // Validasi ukuran max 2MB
+            if (fileSize > 2 * 1024 * 1024) {
+              if (kDebugMode) print("SKIP: File terlalu besar (max 2MB)");
+              continue;
+            }
 
-            // ContentType mengikuti ekstensi file yang diupload
-            final outExt = p.extension(toUpload.path).toLowerCase();
+            final outExt = p.extension(original.path).toLowerCase();
             final mediaType = _mediaTypeFor(outExt);
+            final filename = p.basename(original.path);
 
+            // Backend Laravel mengecek: $request->hasFile('files')
+            // Jadi kita HANYA kirim dengan kunci 'files[]' saja (format array PHP standar)
             final multipartFile = await MultipartFile.fromFile(
-              toUpload.path,
-              filename: p.basename(toUpload.path),
+              original.path,
+              filename: filename,
               contentType: mediaType,
             );
-
-            // Jika backend butuh "files[]" tanpa index, ganti 'files[$i]' jadi 'files[]'
-            formData.files.add(MapEntry('files[$i]', multipartFile));
+            formData.files.add(MapEntry('files[]', multipartFile));
+            if (kDebugMode) {
+              print("=> Ditambahkan: files[] = $filename ($mediaType)");
+            }
           } catch (e) {
-            // lanjut ke file berikutnya kalau ada error
             if (kDebugMode) {
               print('Gagal memproses file ${files[i]}: $e');
             }

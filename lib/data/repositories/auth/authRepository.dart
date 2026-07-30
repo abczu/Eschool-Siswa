@@ -23,6 +23,101 @@ class AuthRepository {
     }
   }
 
+  // Register device token ke backend (untuk sinkronisasi Tanpa login)
+  Future<void> registerDeviceToken({required String fcmId}) async {
+    try {
+      // Pastikan user sudah login sebelum register token
+      if (!getIsLogIn()) return;
+      
+      final body = {
+        "fcm_id": fcmId,
+        "platform": defaultTargetPlatform == TargetPlatform.iOS ? "ios" : "android"
+      };
+
+      debugPrint('DEBUG: Memperbarui token device ke backend...');
+      // Mencoba mendaftarkan token melalui jalur profil siswa (lebih aman untuk akun Siswa)
+      await Api.get(
+        url: Api.studentProfile,
+        useAuthToken: true,
+        queryParameters: {
+          "fcm_id": fcmId,
+          "platform":
+              defaultTargetPlatform == TargetPlatform.iOS ? "ios" : "android"
+        },
+      );
+      debugPrint('✅ Token device berhasil didaftarkan ke backend');
+      
+      // Update FCM class section topic subscriptions
+      await updateFCMClassSectionTopics();
+    } catch (e) {
+      debugPrint('❌ Gagal mendaftarkan token device: $e');
+    }
+  }
+
+  // Update FCM class section subscriptions based on user role (Student/Parent)
+  Future<void> updateFCMClassSectionTopics() async {
+    try {
+      if (!getIsLogIn()) {
+        debugPrint("🔔 FCM Topic: User tidak login, lewati update topic");
+        return;
+      }
+
+      final authBox = Hive.box(authBoxKey);
+      final isStudent = getIsStudentLogIn();
+
+      // Get target class section IDs based on logged-in student or parent children
+      final List<int> targetIds = [];
+      if (isStudent) {
+        final student = getStudentDetails();
+        final classSectionId = student.classSection?.id;
+        if (classSectionId != null) {
+          targetIds.add(classSectionId);
+        }
+      } else {
+        final children = getChildrenData();
+        for (final child in children) {
+          final classSectionId = child.classSection?.id;
+          if (classSectionId != null && !targetIds.contains(classSectionId)) {
+            targetIds.add(classSectionId);
+          }
+        }
+      }
+
+      // Read current subscribed ids from hive
+      final List<int> currentSubscribedIds = List<int>.from(
+        authBox.get(subscribedClassSectionIdsKey, defaultValue: [])
+      );
+
+      debugPrint("🔔 FCM Topic: Mengupdate Class Section Topics...");
+      debugPrint("   - Subscribed saat ini: $currentSubscribedIds");
+      debugPrint("   - Target subskripsi: $targetIds");
+
+      // 1. Unsubscribe from invalid/old topics
+      for (final id in currentSubscribedIds) {
+        if (!targetIds.contains(id)) {
+          final topicName = "class_section_$id";
+          debugPrint("   - Unsubscribe dari topic: $topicName");
+          await FirebaseMessaging.instance.unsubscribeFromTopic(topicName);
+        }
+      }
+
+      // 2. Subscribe to new topics
+      for (final id in targetIds) {
+        if (!currentSubscribedIds.contains(id)) {
+          final topicName = "class_section_$id";
+          debugPrint("   - Subscribe ke topic: $topicName");
+          await FirebaseMessaging.instance.subscribeToTopic(topicName);
+        }
+      }
+
+      // 3. Save new state to Hive
+      await authBox.put(subscribedClassSectionIdsKey, targetIds);
+      debugPrint("✅ FCM Topic: Pembaruan topic subskripsi selesai.");
+    } catch (e) {
+      debugPrint("❌ FCM Topic: Gagal memperbarui topic class section: $e");
+    }
+  }
+
   //LocalDataSource
   bool getIsLogIn() {
     return Hive.box(authBoxKey).get(isLogInKey) ?? false;
@@ -202,7 +297,23 @@ set schoolCode(String value) =>
       final fcmToken = await FirebaseMessaging.instance.getToken();
       debugPrint('🔑 FCM Token saat logout: $fcmToken');
 
-      // ✅ 2. Kirim request logout ke backend dengan FCM token
+      // ✅ 2. Unsubscribe dari all class section topics yang aktif
+      final authBox = Hive.box(authBoxKey);
+      try {
+        final List<int> currentSubscribedIds = List<int>.from(
+          authBox.get(subscribedClassSectionIdsKey, defaultValue: [])
+        );
+        for (final id in currentSubscribedIds) {
+          final topicName = "class_section_$id";
+          debugPrint('🗑️ FCM Topic: Unsubscribing dari topic: $topicName saat logout');
+          await FirebaseMessaging.instance.unsubscribeFromTopic(topicName);
+        }
+        await authBox.delete(subscribedClassSectionIdsKey);
+      } catch (e) {
+        debugPrint('⚠️ Error saat unsubscribe topic FCM: $e');
+      }
+
+      // ✅ 3. Kirim request logout ke backend dengan FCM token
       // Backend akan unregister token ini dari database
       await Api.post(
           body: {'fcm_id': fcmToken ?? ''},
@@ -210,7 +321,7 @@ set schoolCode(String value) =>
           useAuthToken: true);
       debugPrint('✅ Logout request berhasil dikirim ke backend');
 
-      // ✅ 3. Hapus FCM token dari device
+      // ✅ 4. Hapus FCM token dari device
       await FirebaseMessaging.instance.deleteToken();
       debugPrint('🗑️ FCM Token berhasil dihapus dari device');
     } catch (e) {

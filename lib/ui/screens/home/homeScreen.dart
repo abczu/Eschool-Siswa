@@ -173,6 +173,13 @@ class HomeScreenState extends State<HomeScreen>
           .fetchSchoolConfiguration(useParentApi: false);
       // Safety Net Poin 2: Cek invoice pending saat halaman pertama dibuka
       context.read<PendingPaymentCheckCubit>().checkAllPendingPayments();
+
+      // ✅ REGISTER FCM TOKEN: Daftarkan token setelah login dipastikan sudah siap
+      AuthRepository().GetDeviceToken().then((token) {
+        if (token.isNotEmpty) {
+          AuthRepository().registerDeviceToken(fcmId: token);
+        }
+      });
     });
     debugPrint("HomeScreen initStated exam submit");
     Future.microtask(() => ExamSubmitSyncService.syncIfCached());
@@ -667,27 +674,7 @@ class HomeScreenState extends State<HomeScreen>
 
     if (homeBottomSheetMenu[_currentlyOpenMenuIndex].title ==
         extracurricularKey) {
-      return MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) =>
-                ExtracurricularCubit(ExtracurricularRepository()),
-          ),
-          BlocProvider(
-            create: (context) =>
-                MyExtracurricularCubit(ExtracurricularRepository()),
-          ),
-          BlocProvider(
-            create: (context) =>
-                JoinExtracurricularCubit(ExtracurricularRepository()),
-          ),
-          BlocProvider(
-            create: (context) =>
-                AllMyExtracurricularStatusCubit(ExtracurricularRepository()),
-          ),
-        ],
-        child: const ExtracurricularContainer(showBackButton: false),
-      );
+      return const ExtracurricularContainer(showBackButton: false);
     }
 
     // Fitur baru eschool 1.3.3 - Galang

@@ -241,7 +241,7 @@ class _NewChatContactsScreenState extends State<NewChatContactsScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: CachedNetworkImage(
-                  imageUrl: chatUser.image,
+                  imageUrl: Utils.fixImageUrl(chatUser.image),
                   fit: BoxFit.cover,
                   width: 48,
                   height: 48,

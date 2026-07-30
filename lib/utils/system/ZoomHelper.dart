@@ -1,13 +1,15 @@
 import 'dart:ui'; // untuk ImageFilter.blur
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:eschool/utils/system/utils.dart';
 
 void showBlurZoomImagePreview(
   BuildContext context, {
   required String imageUrl,
   String? heroTag,
 }) {
-  if (imageUrl.isEmpty) return;
+  final sanitizedUrl = Utils.fixImageUrl(imageUrl);
+  if (sanitizedUrl.isEmpty) return;
 
   showGeneralDialog(
     context: context,
@@ -34,10 +36,10 @@ void showBlurZoomImagePreview(
               child: GestureDetector(
                 onTap: () {}, // consume tap
                 child: Hero(
-                  tag: heroTag ?? imageUrl,
+                  tag: heroTag ?? sanitizedUrl,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: _ZoomableImage(imageUrl: imageUrl),
+                    child: _ZoomableImage(imageUrl: sanitizedUrl),
                   ),
                 ),
               ),
@@ -94,6 +96,8 @@ class _ZoomableImageState extends State<_ZoomableImage> {
 
   @override
   Widget build(BuildContext context) {
+    final sanitizedUrl = Utils.fixImageUrl(widget.imageUrl);
+
     return InteractiveViewer(
       transformationController: _controller,
       minScale: 1.0,
@@ -101,11 +105,15 @@ class _ZoomableImageState extends State<_ZoomableImage> {
       panEnabled: true,
       clipBehavior: Clip.none,
       child: CachedNetworkImage(
-        imageUrl: widget.imageUrl,
+        imageUrl: sanitizedUrl,
         fit: BoxFit.contain,
         placeholder: (context, url) =>
             Center(child: CircularProgressIndicator()),
-        errorWidget: (context, url, error) => Icon(Icons.error),
+        errorWidget: (context, url, error) => const Icon(
+          Icons.person_rounded,
+          color: Colors.white70,
+          size: 64,
+        ),
       ),
     );
   }

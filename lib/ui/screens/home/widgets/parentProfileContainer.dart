@@ -330,11 +330,7 @@ class _GuardianProfileContainerState extends State<GuardianProfileContainer>
                       label,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.color
-                            ?.withValues(alpha: 0.7),
+                        color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -344,7 +340,7 @@ class _GuardianProfileContainerState extends State<GuardianProfileContainer>
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                        color: Colors.white,
                       ),
                       overflow: isExpanded
                           ? TextOverflow.visible
@@ -522,15 +518,16 @@ class _GuardianProfileContainerState extends State<GuardianProfileContainer>
                                   ? InkWell(
                                       onTap: () {
                                         final url = image ?? "";
+                                        final sanitizedUrl = Utils.fixImageUrl(url);
                                         showBlurZoomImagePreview(
                                           context,
-                                          imageUrl: url,
+                                          imageUrl: sanitizedUrl,
                                           heroTag:
                                               'profileImage', // sama dengan Hero kecil
                                         );
                                       },
                                       child: CachedNetworkImage(
-                                        imageUrl: image,
+                                        imageUrl: Utils.fixImageUrl(image),
                                         fit: BoxFit.cover,
                                         errorWidget: (context, url, error) {
                                           return Container(

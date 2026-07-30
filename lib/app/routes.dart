@@ -59,6 +59,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eschool/ui/screens/system/contactScreen.dart';
 import 'package:eschool/ui/screens/system/contactDetailScreen.dart';
 import 'package:eschool/ui/screens/system/submitContactScreen.dart';
+import 'package:eschool/ui/screens/extracurricular/extracurricularDetailsScreen.dart';
 import 'package:get/route_manager.dart';
 
 // ignore: avoid_classes_with_only_static_members
@@ -139,6 +140,7 @@ class Routes {
   static const String contacts = "/contacts";
   static const String contactDetails = "/contact-details";
   static const String submitContact = "/submit-contact";
+  static const String extracurricularDetails = "/extracurricular-details";
 
   static List<GetPage> getPages = [
     GetPage(name: splash, page: () => SplashScreen.routeInstance()),
@@ -235,6 +237,9 @@ class Routes {
         name: contactDetails, page: () => ContactDetailScreen.routeInstance()),
     GetPage(
         name: submitContact, page: () => SubmitContactScreen.routeInstance()),
+    GetPage(
+        name: extracurricularDetails,
+        page: () => ExtracurricularDetailsScreen.routeInstance()),
 
     // Fitur baru Eschool 1.3.3 - Galang
     GetPage(

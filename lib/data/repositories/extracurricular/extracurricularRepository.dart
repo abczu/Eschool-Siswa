@@ -29,6 +29,7 @@ class ExtracurricularRepository {
         queryParameters: queryParameters.isNotEmpty ? queryParameters : null,
       );
 
+
       // API menggunakan 'rows' bukan 'data'
       final extracurriculars = ((result['rows'] ?? []) as List)
           .map((e) => Extracurricular.fromJson(Map.from(e)))

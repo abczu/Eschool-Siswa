@@ -185,10 +185,13 @@ class OptimizedFileCompressionUtils {
         double dimensionFactor =
             sizeFactor * 1.2; // Slightly more aggressive on dimensions
 
+        final int minWidth = image.width < 800 ? image.width : 800;
+        final int minHeight = image.height < 600 ? image.height : 600;
+
         targetWidth =
-            (image.width * dimensionFactor).round().clamp(800, image.width);
+            (image.width * dimensionFactor).round().clamp(minWidth, image.width);
         targetHeight =
-            (image.height * dimensionFactor).round().clamp(600, image.height);
+            (image.height * dimensionFactor).round().clamp(minHeight, image.height);
 
         // Lower quality for smaller target
         quality = customQuality ?? 80;

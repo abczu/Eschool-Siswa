@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:eschool/data/models/academic/electiveSubject.dart';
 import 'package:eschool/data/models/system/sliderDetails.dart';
 import 'package:eschool/data/models/academic/subject.dart';
@@ -56,6 +56,10 @@ class StudentSubjectsAndSlidersCubit
               useParentApi: useParentApi, childId: childId)
           : List<SliderDetails>.from([]);
       debugPrint(sliders.toString());
+      debugPrint("=== SLIDERS LENGTH: ${sliders.length} ===");
+      for (int i = 0; i < sliders.length; i++) {
+        debugPrint("=== Cubit Slider[$i]: id=${sliders[i].id}, image=${sliders[i].image} ===");
+      }
       debugPrint("---");
 
       final subjects = useParentApi

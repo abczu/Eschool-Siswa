@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
@@ -8,12 +9,16 @@ class VideoControlsContainer extends StatefulWidget {
   final AnimationController controlsAnimationController;
   final YoutubePlayerController? youtubePlayerController;
   final VideoPlayerController? videoPlayerController;
+  final bool isGalleryVideo;
+  final VoidCallback? onFullscreenPressed;
   const VideoControlsContainer({
     Key? key,
     required this.isYoutubeVideo,
     this.videoPlayerController,
     required this.controlsAnimationController,
     this.youtubePlayerController,
+    this.isGalleryVideo = false,
+    this.onFullscreenPressed,
   }) : super(key: key);
 
   @override
@@ -107,8 +112,17 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
                 IconButton(
                   color: Colors.white,
                   padding: EdgeInsets.zero,
+                  iconSize: 32, // Larger icon
                   onPressed: () {
                     if (_allowGesture()) {
+                      if (widget.onFullscreenPressed != null) {
+                        widget.onFullscreenPressed!();
+                        return;
+                      }
+                      if (widget.isGalleryVideo) {
+                        Get.back();
+                        return;
+                      }
                       if (MediaQuery.of(context).orientation ==
                           Orientation.portrait) {
                         SystemChrome.setPreferredOrientations([
@@ -126,6 +140,7 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
                     }
                   },
                   icon: const Icon(Icons.fullscreen),
+                  tooltip: "Fullscreen",
                 )
               ],
             ),

@@ -14,12 +14,14 @@ import 'package:eschool/data/repositories/payment/feeRepository.dart';
 import 'package:eschool/data/repositories/payment/paymentSubmissionRepository.dart';
 import 'package:eschool/data/repositories/exam/resultRepository.dart';
 import 'package:eschool/data/repositories/system/schoolRepository.dart';
+import 'package:eschool/data/repositories/extracurricular/extracurricularRepository.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/route_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -41,6 +43,10 @@ import 'package:eschool/cubits/exam/reportTabSelectionCubit.dart';
 import 'package:eschool/cubits/exam/resultTabSelectionCubit.dart';
 import 'package:eschool/cubits/academic/studentSubjectAndSlidersCubit.dart';
 import 'package:eschool/cubits/exam/examTabSelectionCubit.dart';
+import 'package:eschool/cubits/extracurricular/allMyExtracurricularStatusCubit.dart';
+import 'package:eschool/cubits/extracurricular/extracurricularCubit.dart';
+import 'package:eschool/cubits/extracurricular/joinExtracurricularCubit.dart';
+import 'package:eschool/cubits/extracurricular/myExtracurricularCubit.dart';
 
 import 'package:eschool/data/repositories/academic/announcementRepository.dart';
 import 'package:eschool/data/repositories/auth/authRepository.dart';
@@ -153,6 +159,9 @@ class _MyAppState extends State<MyApp> {
         RepositoryProvider<PaymentSubmissionRepository>(
           create: (_) => PaymentSubmissionRepository(),
         ),
+        RepositoryProvider<ExtracurricularRepository>(
+          create: (_) => ExtracurricularRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -216,7 +225,23 @@ class _MyAppState extends State<MyApp> {
               create: (context) => PaymentVerificationCubit(
                   context.read<PaymentSubmissionRepository>())),
           BlocProvider<SocketSettingCubit>(
-              create: (context) => SocketSettingCubit())
+              create: (context) => SocketSettingCubit()),
+          BlocProvider<JoinExtracurricularCubit>(
+            create: (context) => JoinExtracurricularCubit(
+                context.read<ExtracurricularRepository>()),
+          ),
+          BlocProvider<AllMyExtracurricularStatusCubit>(
+            create: (context) => AllMyExtracurricularStatusCubit(
+                context.read<ExtracurricularRepository>()),
+          ),
+          BlocProvider<ExtracurricularCubit>(
+            create: (context) =>
+                ExtracurricularCubit(context.read<ExtracurricularRepository>()),
+          ),
+          BlocProvider<MyExtracurricularCubit>(
+            create: (context) =>
+                MyExtracurricularCubit(context.read<ExtracurricularRepository>()),
+          ),
         ],
         child: Builder(
           builder: (context) {
@@ -247,6 +272,15 @@ class _MyAppState extends State<MyApp> {
               ),
               locale: context.read<AppLocalizationCubit>().state.language,
               fallbackLocale: const Locale("id"),
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const [
+                Locale('en', 'US'),
+                Locale('id', 'ID'),
+              ],
               getPages: Routes.getPages,
               initialRoute: Routes.splash,
               translationsKeys: AppTranslation.translationsKeys,

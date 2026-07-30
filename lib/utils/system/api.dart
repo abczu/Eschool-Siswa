@@ -65,6 +65,7 @@ class Api {
   //Apis that will be use in both student and parent app
   //
   static String get logout => "${databaseUrl}logout";
+  static String get registerDeviceToken => "${databaseUrl}devices/register";
   static String get settings => "${databaseUrl}settings";
   static String get holidays => "${databaseUrl}holidays";
 

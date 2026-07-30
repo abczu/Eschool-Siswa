@@ -4,10 +4,12 @@ import 'package:eschool/cubits/extracurricular/allMyExtracurricularStatusCubit.d
 import 'package:eschool/cubits/extracurricular/joinExtracurricularCubit.dart';
 import 'package:eschool/data/models/extracurricular/extracurricular.dart';
 import 'package:eschool/data/models/extracurricular/studentExtracurricular.dart';
+import 'package:eschool/app/routes.dart';
 import 'package:eschool/ui/widgets/extracurricular/modernPatternPainter.dart';
 import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 
 class ExtracurricularCard extends StatelessWidget {
   final Extracurricular extracurricular;
@@ -68,6 +70,12 @@ class ExtracurricularCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          onTap: () {
+            Get.toNamed(
+              Routes.extracurricularDetails,
+              arguments: {'extracurricular': extracurricular},
+            );
+          },
           borderRadius: BorderRadius.circular(32),
           highlightColor: Colors.transparent,
           splashColor: colorScheme['primary']!.withValues(alpha: 0.05),
@@ -84,21 +92,24 @@ class ExtracurricularCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildModernCardHeader(
-                        extracurricular, colorScheme, headerHeight),
-                    _buildModernCardContent(extracurricular, colorScheme,
-                        headerHeight, studentId, nisn, joinedStatus, context),
-                  ],
-                ),
-                _buildModernOverlappingCard(
-                    extracurricular, colorScheme, headerHeight),
-              ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildModernCardHeader(
+                          extracurricular, colorScheme, headerHeight),
+                      _buildModernCardContent(extracurricular, colorScheme,
+                          headerHeight, studentId, nisn, joinedStatus, context),
+                    ],
+                  ),
+                  _buildModernOverlappingCard(
+                      extracurricular, colorScheme, headerHeight),
+                ],
+              ),
             ),
           ),
         ),
@@ -185,15 +196,13 @@ class ExtracurricularCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        extracurricular.instructor ?? 'Tidak ada pembimbing',
+                        _formatInstructorName(extracurricular.instructor ?? 'Tidak ada pembimbing'),
                         style: TextStyle(
                           color: colorScheme['primary'],
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -596,5 +605,16 @@ class ExtracurricularCard extends StatelessWidget {
         ),
       ),
     );
+  }
+  String _formatInstructorName(String name) {
+    if (name == '-' || name == 'Tidak ada pembimbing') return name;
+
+    List<String> parts = name.split(' ');
+    if (parts.length > 2 &&
+        parts.first.toLowerCase() == parts.last.toLowerCase()) {
+      parts.removeLast();
+      return parts.join(' ');
+    }
+    return name;
   }
 }

@@ -367,26 +367,36 @@ class _UploadAssignmentFilesBottomsheetContainerState
 
                       if (state is UploadAssignmentInProgress) return;
 
-                      if (widget.assignment.isText &&
-                          _answerController.text.isEmpty) {
-                        Utils.showCustomSnackBar(
-                          context: context,
-                          errorMessage:
-                              "Kamu harus mengisi semua input terlebih dahulu",
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        );
-                        return;
-                      }
+                      final bool isTextEnabled = widget.assignment.isText;
+                      final bool isFileEnabled = widget.assignment.filetypes.isNotEmpty;
 
-                      if (widget.assignment.filetypes.isNotEmpty &&
-                          uploadedFiles.isEmpty) {
-                        Utils.showCustomSnackBar(
-                          context: context,
-                          errorMessage:
-                              "Kamu harus mengisi semua input terlebih dahulu",
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        );
-                        return;
+                      if (isTextEnabled && isFileEnabled) {
+                        if (_answerController.text.isEmpty && uploadedFiles.isEmpty) {
+                          Utils.showCustomSnackBar(
+                            context: context,
+                            errorMessage: "Kamu harus mengisi teks atau melampirkan file terlebih dahulu",
+                            backgroundColor: Theme.of(context).colorScheme.error,
+                          );
+                          return;
+                        }
+                      } else if (isTextEnabled) {
+                        if (_answerController.text.isEmpty) {
+                          Utils.showCustomSnackBar(
+                            context: context,
+                            errorMessage: "Kamu harus mengisi teks terlebih dahulu",
+                            backgroundColor: Theme.of(context).colorScheme.error,
+                          );
+                          return;
+                        }
+                      } else if (isFileEnabled) {
+                        if (uploadedFiles.isEmpty) {
+                          Utils.showCustomSnackBar(
+                            context: context,
+                            errorMessage: "Kamu harus melampirkan file terlebih dahulu",
+                            backgroundColor: Theme.of(context).colorScheme.error,
+                          );
+                          return;
+                        }
                       }
 
                       context.read<UploadAssignmentCubit>().uploadAssignment(

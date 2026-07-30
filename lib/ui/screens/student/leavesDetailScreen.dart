@@ -241,8 +241,7 @@ class _LeavesDetailScreenState extends State<LeavesDetailScreen> {
                       ),
                     ),
                   ),
-                  if (widget.leave.leaveDetail
-                      .any((detail) => detail.isFile)) ...[
+                  if (widget.leave.fileDetail.isNotEmpty) ...[
                     SizedBox(height: 16),
                     Text(
                       'Lampiran',
@@ -255,8 +254,7 @@ class _LeavesDetailScreenState extends State<LeavesDetailScreen> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: widget.leave.leaveDetail
-                            .where((detail) => detail.isFile)
+                        children: widget.leave.fileDetail
                             .map((detail) => _buildAttachmentItem(detail))
                             .toList(),
                       ),

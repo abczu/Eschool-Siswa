@@ -394,7 +394,7 @@ class _HomeContainerState extends State<HomeContainer>
     final timeNow = DateTime.now().hour;
     String greeting = '';
 
-    if (timeNow < 12) {
+    if (timeNow < 11) {
       greeting = 'Selamat Pagi';
     } else if (timeNow < 15) {
       greeting = 'Selamat Siang';

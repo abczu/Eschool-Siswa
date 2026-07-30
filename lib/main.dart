@@ -13,6 +13,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -21,10 +22,11 @@ import 'package:get/get.dart';
 ///
 ///
 ///
-// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   await Firebase.initializeApp();
-//   print("Pesan background: ${message.notification?.title}");
-// }
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("📨 Pesan background diterima: ${message.notification?.title}");
+}
 
 Future<void> main() async {
   timeago.setLocaleMessages('id', timeago.IdMessages());
@@ -35,6 +37,7 @@ Future<void> main() async {
 
   // Setup FCM notification listener
   await setupFCM();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // pasang observer global
   GlobalAppLifecycleObserver.install();
@@ -54,16 +57,28 @@ Future<void> setupFCM() async {
   // Izin notifikasi (Android 13+ & iOS)
   await FirebaseMessaging.instance.requestPermission();
 
-  // --- DEBUG TOKEN ---
+  // --- DEBUG & REGISTER TOKEN ---
   try {
     String? token = await FirebaseMessaging.instance.getToken();
     debugPrint('=========================================');
     debugPrint('📍 TOKEN HP SAYA (Copy ini):');
     debugPrint(token ?? 'Gagal ambil token');
     debugPrint('=========================================');
+
+    // ✅ DEBUG: Just print the token in setupFCM
+    if (token != null && token.isNotEmpty) {
+      debugPrint('🔔 FCM Token: $token');
+    }
   } catch (e) {
     debugPrint('❌ Error ambil token: $e');
   }
+
+  // --- TOKEN REFRESH LISTENER ---
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    debugPrint('🔔 FCM Token refreshed: $newToken');
+    AuthRepository().registerDeviceToken(fcmId: newToken);
+  });
+  // ------------------------------
   // ------------------
 
   // Foreground: tampilkan banner non-modal (tanpa context)
@@ -96,7 +111,7 @@ Future<void> setupFCM() async {
     final title = (message.notification?.title ?? 'Notifikasi').toString();
     final body = (message.notification?.body ?? '').toString();
 
-    print("typeeee" + type);
+    debugPrint("📨 FCM Type: $type");
     // mapping type -> style
     final PushType style = mapPushType(type, status: message.data['status']);
     final String? route = mapPushRoute(type, payload: message.data);
@@ -294,7 +309,11 @@ PushType mapPushType(String? rawType, {dynamic status}) {
     'topic_created' || 'topic_updated' => PushType.info,
 
     // Announcement
-    'announcement_created' || 'announcement_updated' => PushType.info,
+    'announcement' ||
+    'announcement_created' ||
+    'announcement_updated' ||
+    'notice' =>
+      PushType.info,
 
     // Promote / Transfer
     'student_promoted' => PushType.success,
@@ -348,7 +367,11 @@ String? mapPushRoute(String? rawType, {dynamic payload}) {
     'topic_created' || 'topic_updated' => '/',
 
     // Announcement
-    'announcement_created' || 'announcement_updated' => '/noticeBoard',
+    'announcement' ||
+    'announcement_created' ||
+    'announcement_updated' ||
+    'notice' =>
+      '/noticeBoard',
 
     // Promote / Transfer
     'student_promoted' || 'student_transferred' => '/studentProfile',

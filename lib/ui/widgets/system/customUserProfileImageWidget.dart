@@ -18,18 +18,23 @@ class CustomUserProfileImageWidget extends StatelessWidget {
       this.radius,
       this.context,this.onTaps});
 
+  String _fixUrl(String url) {
+    return Utils.fixImageUrl(url);
+  }
+
   _imageOrDefaultProfileImage(BuildContext ctx) {
+    final fixedUrl = _fixUrl(profileUrl);
     return InkWell(
       onTap: onTaps ?? () {
         // Zoom image preview
         showBlurZoomImagePreview(
           context ?? ctx,
-          imageUrl: profileUrl,
+          imageUrl: fixedUrl,
         );
       },
       child: CachedNetworkImage(
         fit: BoxFit.cover,
-        imageUrl: profileUrl,
+        imageUrl: fixedUrl,
         errorWidget: (context, url, error) {
           return SvgPicture.asset(
             Utils.getImagePath("default_profile.svg"),

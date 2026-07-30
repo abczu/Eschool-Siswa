@@ -12,6 +12,7 @@ class ApplyLeaveCubit extends Cubit<ApplyLeaveState> {
     required String reason,
     required List<Map<String, String>> leaveDetails,
     List<String>? files,
+    int? leaveId,
   }) async {
     try {
       // Kompresi sudah dilakukan di UI (saat pilih file).
@@ -23,6 +24,7 @@ class ApplyLeaveCubit extends Cubit<ApplyLeaveState> {
         leaveDetails: leaveDetails,
         files:
             files, // file sudah siap (termasuk hasil kompres dari UI jika ada)
+        leaveId: leaveId,
       );
 
       emit(ApplyLeaveSuccess());

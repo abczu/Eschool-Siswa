@@ -7,11 +7,13 @@ class CustomBackButton extends StatelessWidget {
   final Function? onTap;
   final double? topPadding;
   final AlignmentDirectional? alignmentDirectional;
+  final Color? iconColor;
   const CustomBackButton({
     Key? key,
     this.onTap,
     this.topPadding,
     this.alignmentDirectional,
+    this.iconColor,
   }) : super(key: key);
 
   @override
@@ -24,6 +26,7 @@ class CustomBackButton extends StatelessWidget {
           start: Utils.screenContentHorizontalPadding,
         ),
         child: SvgButton(
+          buttonColor: iconColor,
           onTap: () {
             if (onTap != null) {
               onTap?.call();

@@ -458,7 +458,7 @@ class _HolidaysContainerState extends State<HolidaysContainer> {
         clipBehavior: Clip.none,
         children: [
           context.read<AuthCubit>().isParent()
-              ? const CustomBackButton()
+              ? CustomBackButton()
               : const SizedBox(),
           Align(
             alignment: Alignment.topCenter,
