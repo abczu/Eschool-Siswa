@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:eschool/utils/system/constants.dart';
 import 'package:eschool/utils/system/errorMessageKeysAndCodes.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart' hide Response, FormData;
+import 'package:eschool/app/routes.dart';
 
 class ApiException implements Exception {
   String errorMessage;
@@ -20,6 +23,14 @@ class ApiException implements Exception {
 
 // ignore: avoid_classes_with_only_static_members
 class Api {
+  static final Dio _dio = _initDio();
+
+  static Dio _initDio() {
+    final dio = Dio();
+    dio.interceptors.add(AuthInterceptor(dio));
+    return dio;
+  }
+
   /// Extracts a user-readable error message from a Dio response.
   /// Priority: response JSON 'message' field → status code fallback.
   static String _extractErrorMessage(Response? response, {String? fallbackCode}) {
@@ -57,6 +68,7 @@ class Api {
     return {
       "Authorization": "Bearer $jwtToken",
       "school-code": schoolCode,
+      "X-School-Code": schoolCode,
       "Accept": "application/json",
     };
   }
@@ -84,6 +96,9 @@ class Api {
   ///[Student app apis]
   //
   static String get studentLogin => "${databaseUrl}student/login";
+  static String get requestOtp => "${databaseUrl}auth/otp/request";
+  static String get verifyOtp => "${databaseUrl}auth/otp/verify";
+  static String get refresh => "${databaseUrl}auth/refresh";
   static String get studentProfile => "${databaseUrl}student/get-profile-data";
   static String get studentSubjects => "${databaseUrl}student/subjects";
   //get subjects of given class
@@ -318,7 +333,7 @@ class Api {
     Function(int, int)? onReceiveProgress,
   }) async {
     try {
-      final Dio dio = Dio();
+      final dio = _dio;
       dynamic dataToSend;
 
       // Cek apakah body sudah berupa FormData
@@ -379,7 +394,7 @@ class Api {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final Dio dio = Dio();
+      final dio = _dio;
 
       if (kDebugMode) {
         print(url);
@@ -515,7 +530,7 @@ class Api {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final Dio dio = Dio();
+      final dio = _dio;
 
       if (kDebugMode) {
         print("API Called DELETE: $url");
@@ -566,7 +581,7 @@ class Api {
       if (kDebugMode) {
         debugPrint('[Api] Downloading document via URL: ${data['pdf_url']}');
       }
-      final dio = Dio();
+      final dio = _dio;
       final response = await dio.get<List<int>>(
         data['pdf_url'].toString(),
         options: Options(responseType: ResponseType.bytes),
@@ -583,5 +598,66 @@ class Api {
     }
 
     throw ApiException("Konten dokumen tidak ditemukan dalam respons API.");
+  }
+}
+
+class AuthInterceptor extends Interceptor {
+  final Dio _dio;
+  Completer<String>? _refreshTokenCompleter;
+
+  AuthInterceptor(this._dio);
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    if (err.response?.statusCode == 401) {
+      RequestOptions options = err.requestOptions;
+
+      // Jika URL adalah refresh token atau logout, langsung bersihkan secara lokal dan ke login
+      if (options.path.contains('/auth/refresh') || options.path.contains('/logout') || options.path.contains('logout')) {
+        AuthRepository().setIsLogIn(false);
+        AuthRepository().setJwtToken("");
+        Get.offAllNamed(Routes.auth);
+        return handler.next(err);
+      }
+
+      if (_refreshTokenCompleter != null) {
+        // Refresh sedang berjalan, tunggu hingga selesai
+        try {
+          final newToken = await _refreshTokenCompleter!.future;
+          options.headers["Authorization"] = "Bearer $newToken";
+          final response = await _dio.fetch(options);
+          return handler.resolve(response);
+        } catch (e) {
+          return handler.next(err);
+        }
+      }
+
+      // Mulai proses refresh
+      _refreshTokenCompleter = Completer<String>();
+      try {
+        final response = await Dio().post(
+          "${databaseUrl}auth/refresh",
+          options: Options(headers: {
+            "Authorization": "Bearer ${AuthRepository().getJwtToken()}"
+          }),
+        );
+        
+        final newToken = response.data['data']['token'];
+        await AuthRepository().setJwtToken(newToken);
+
+        _refreshTokenCompleter!.complete(newToken);
+        _refreshTokenCompleter = null;
+
+        options.headers["Authorization"] = "Bearer $newToken";
+        final retryResponse = await _dio.fetch(options);
+        return handler.resolve(retryResponse);
+      } catch (e) {
+        _refreshTokenCompleter!.completeError(err);
+        _refreshTokenCompleter = null;
+        AuthRepository().signOutUser();
+        Get.offAllNamed(Routes.auth);
+      }
+    }
+    return handler.next(err);
   }
 }

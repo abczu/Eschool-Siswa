@@ -28,10 +28,11 @@ class AuthRepository {
     try {
       // Pastikan user sudah login sebelum register token
       if (!getIsLogIn()) return;
-      
+
       final body = {
         "fcm_id": fcmId,
-        "platform": defaultTargetPlatform == TargetPlatform.iOS ? "ios" : "android"
+        "platform":
+            defaultTargetPlatform == TargetPlatform.iOS ? "ios" : "android"
       };
 
       debugPrint('DEBUG: Memperbarui token device ke backend...');
@@ -46,7 +47,7 @@ class AuthRepository {
         },
       );
       debugPrint('✅ Token device berhasil didaftarkan ke backend');
-      
+
       // Update FCM class section topic subscriptions
       await updateFCMClassSectionTopics();
     } catch (e) {
@@ -85,8 +86,7 @@ class AuthRepository {
 
       // Read current subscribed ids from hive
       final List<int> currentSubscribedIds = List<int>.from(
-        authBox.get(subscribedClassSectionIdsKey, defaultValue: [])
-      );
+          authBox.get(subscribedClassSectionIdsKey, defaultValue: []));
 
       debugPrint("🔔 FCM Topic: Mengupdate Class Section Topics...");
       debugPrint("   - Subscribed saat ini: $currentSubscribedIds");
@@ -217,10 +217,32 @@ class AuthRepository {
   String get schoolCode =>
       Hive.box(authBoxKey).get(schoolCodeKey, defaultValue: "") as String;
 
-set schoolCode(String value) =>
+  set schoolCode(String value) =>
       Hive.box(authBoxKey).put(schoolCodeKey, value);
 
-// Remember Me methods for Student 
+// Remember Me methods for OTP login flow
+  bool getRememberMe() {
+    return Hive.box(authBoxKey).get("rememberMeOtp") ?? false;
+  }
+
+  Future<void> setRememberMe(bool value) async {
+    return Hive.box(authBoxKey).put("rememberMeOtp", value);
+  }
+
+  String getSavedIdentifier() {
+    return Hive.box(authBoxKey).get("savedIdentifierOtp") ?? "";
+  }
+
+  Future<void> setSavedIdentifier(String value) async {
+    return Hive.box(authBoxKey).put("savedIdentifierOtp", value);
+  }
+
+  Future<void> clearOtpCredentials() async {
+    await setRememberMe(false);
+    await setSavedIdentifier("");
+  }
+
+// Remember Me methods for Student
   bool getRememberMeStudent() {
     return Hive.box(authBoxKey).get(rememberMeStudentKey) ?? false;
   }
@@ -301,11 +323,11 @@ set schoolCode(String value) =>
       final authBox = Hive.box(authBoxKey);
       try {
         final List<int> currentSubscribedIds = List<int>.from(
-          authBox.get(subscribedClassSectionIdsKey, defaultValue: [])
-        );
+            authBox.get(subscribedClassSectionIdsKey, defaultValue: []));
         for (final id in currentSubscribedIds) {
           final topicName = "class_section_$id";
-          debugPrint('🗑️ FCM Topic: Unsubscribing dari topic: $topicName saat logout');
+          debugPrint(
+              '🗑️ FCM Topic: Unsubscribing dari topic: $topicName saat logout');
           await FirebaseMessaging.instance.unsubscribeFromTopic(topicName);
         }
         await authBox.delete(subscribedClassSectionIdsKey);
@@ -360,7 +382,6 @@ set schoolCode(String value) =>
       final token = await GetDeviceToken();
       final body = {
         "password": password,
-        "school_code": schoolCode,
         "gr_number": grNumber,
         "fcm_id": token
       };
@@ -400,11 +421,8 @@ set schoolCode(String value) =>
         "student": student
       };
     } catch (e) {
-      // if (kDebugMode) {
       debugPrint("!!!!");
       debugPrint(e.toString());
-      // }
-
       throw ApiException(e.toString());
     }
   }
@@ -506,6 +524,146 @@ set schoolCode(String value) =>
     }
   }
 
+  Future<void> requestOtp({
+    required String identifier,
+  }) async {
+    try {
+      final body = {
+        "identifier": identifier,
+      };
+      await Api.post(
+        body: body,
+        url: Api.requestOtp,
+        useAuthToken: false,
+      );
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyOtp({
+    required String identifier,
+    required String otpCode,
+  }) async {
+    try {
+      final token = await GetDeviceToken();
+      final body = {
+        "identifier": identifier,
+        "otp_code": otpCode,
+        "otp": otpCode,
+        "code": otpCode,
+        "otpCode": otpCode,
+        "fcm_id": token,
+      };
+      final result = await Api.post(
+        body: body,
+        url: Api.verifyOtp,
+        useAuthToken: false,
+      );
+
+      final data = result['data'] as Map<String, dynamic>;
+      final tokenResult =
+          result['token'] ?? data['token'] ?? result['data']?['token'];
+
+      // Check roles and user_type for user type (student/parent)
+      final roles = (data['roles'] ?? data['user']?['roles']) as List? ?? [];
+
+      String userRole = '';
+      if (roles.isNotEmpty) {
+        final firstRole = roles[0];
+        if (firstRole is Map) {
+          userRole = (firstRole['name'] ?? firstRole['slug'] ?? '')
+              .toString()
+              .toLowerCase();
+        } else {
+          userRole = firstRole.toString().toLowerCase();
+        }
+      }
+
+      final hasChildren = (data['children'] != null &&
+              (data['children'] as List).isNotEmpty) ||
+          (data['user']?['children'] != null &&
+              (data['user']['children'] as List).isNotEmpty) ||
+          (data['students'] != null && (data['students'] as List).isNotEmpty) ||
+          (data['user']?['students'] != null &&
+              (data['user']['students'] as List).isNotEmpty);
+
+      final apiUserType =
+          (data['user_type'] ?? data['user']?['user_type'] ?? '')
+              .toString()
+              .toLowerCase();
+
+      debugPrint("DEBUG verifyOtp roles: $roles, parsedUserRole: '$userRole'");
+      debugPrint(
+          "DEBUG verifyOtp apiUserType: '$apiUserType', hasChildren: $hasChildren");
+
+      final isParent = userRole == 'guardian' ||
+          userRole == 'parent' ||
+          apiUserType == 'guardian' ||
+          apiUserType == 'parent' ||
+          hasChildren;
+
+      final isStudent = !isParent;
+      final userType = isStudent ? 'student' : 'parent';
+
+      debugPrint(
+          "DEBUG verifyOtp final detected - isParent: $isParent, isStudent: $isStudent, userType: '$userType'");
+
+      // Parse school details (supports Map or List)
+      final schoolData = data['school'] ?? data['schools'];
+      List<Map<String, dynamic>> schools = [];
+      String schoolCode = '';
+      if (schoolData is List) {
+        schools = List<Map<String, dynamic>>.from(
+            schoolData.map((e) => Map<String, dynamic>.from(e)));
+        if (schools.isNotEmpty) {
+          schoolCode = schools.first['code'] ?? '';
+        }
+      } else if (schoolData is Map) {
+        schools = [Map<String, dynamic>.from(schoolData)];
+        schoolCode = schoolData['code'] ?? '';
+      }
+
+      Student student = Student.fromJson({});
+      Guardian parent = Guardian.fromJson({});
+      List<Student> children = [];
+
+      if (isParent) {
+        final rawParent = Guardian.fromJson(Map.from(data['user'] ?? data));
+
+        final childrenList = (data['user']?['children'] ??
+                data['children'] ??
+                data['user']?['students'] ??
+                data['students']) as List? ??
+            [];
+        children = childrenList.map((child) {
+          final childMap = Map<String, dynamic>.from(child);
+          childMap['token'] = tokenResult;
+          childMap['school_code'] = schoolCode;
+          return Student.fromJson(childMap);
+        }).toList();
+
+        // Enforce parent to have the parsed children list in its model
+        parent = rawParent.copyWith(children: children);
+      } else {
+        final studentData = data['user'] as Map<String, dynamic>? ?? data;
+        student = Student.fromJson(studentData);
+      }
+
+      return {
+        "jwtToken": tokenResult ?? "",
+        "userType": userType,
+        "schoolCode": schoolCode,
+        "schools": schools,
+        "student": student,
+        "parent": parent,
+        "children": children,
+      };
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   Future<void> resetPasswordRequest(
       {required String grNumber,
       required DateTime dob,
@@ -514,7 +672,6 @@ set schoolCode(String value) =>
       final body = {
         "gr_no": grNumber,
         "dob": DateFormat('yyyy-MM-dd').format(dob),
-        "school_code": schoolCode,
       };
       await Api.post(
         body: body,
@@ -535,7 +692,7 @@ set schoolCode(String value) =>
       final body = {
         "current_password": currentPassword,
         "new_password": newPassword,
-        "new_confirm_password": newConfirmedPassword
+        "new_password_confirmation": newConfirmedPassword
       };
       await Api.post(body: body, url: Api.changePassword, useAuthToken: true);
     } catch (e) {

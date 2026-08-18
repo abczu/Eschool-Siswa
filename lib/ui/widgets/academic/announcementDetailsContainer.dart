@@ -49,24 +49,29 @@ class AnnouncementDetailsContainer extends StatelessWidget {
               children: [
                 // Backdrop blur
                 Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                    child: const SizedBox.expand(),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.of(context).pop(),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                      child: Container(
+                        color: Colors.transparent,
+                      ),
+                    ),
                   ),
                 ),
 
-                Dialog(
-                  insetPadding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26)),
-                  child: SafeArea(
-                    bottom: false,
-                    // ==> PENTING: Center agar dialog selalu di tengah & tidak melebar saat konten sedikit
-                    child: Center(
-                      child: LayoutBuilder(
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {},
+                          child: LayoutBuilder(
                         builder: (context, constraints) {
                           final screen = MediaQuery.of(context).size;
                           final maxW =
@@ -417,6 +422,8 @@ class AnnouncementDetailsContainer extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
               ],
             ),
           ),

@@ -148,13 +148,13 @@ class SchoolGalleryContainer extends StatelessWidget {
                         child: Container(
                           height: 150,
                           width: 150,
-                          child: item.isThumbnailSvg()
+                           child: item.isThumbnailSvg()
                               ? SvgPicture.network(
-                                  item.thumbnail ?? "",
+                                  Utils.fixImageUrl(item.thumbnail ?? ""),
                                   fit: BoxFit.cover,
                                 )
                               : CachedNetworkImage(
-                                  imageUrl: item.thumbnail ?? "",
+                                  imageUrl: Utils.fixImageUrl(item.thumbnail ?? ""),
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) => Container(
                                     color: Utils.getColorScheme(context)

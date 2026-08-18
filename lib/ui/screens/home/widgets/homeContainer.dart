@@ -17,6 +17,7 @@ import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/systemModules.dart';
 import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -39,7 +40,7 @@ class _HomeContainerState extends State<HomeContainer>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late final ScrollController ScrollControlContent;
-  double _contentOffset = 0.0;
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
 
   @override
   void initState() {
@@ -51,7 +52,7 @@ class _HomeContainerState extends State<HomeContainer>
     ScrollControlContent = ScrollController();
     ScrollControlContent.addListener(() {
       if (!mounted) return;
-      setState(() => _contentOffset = ScrollControlContent.offset);
+      _scrollOffsetNotifier.value = ScrollControlContent.offset;
     });
 
     if (!widget.isForBottomMenuBackground) {
@@ -106,38 +107,44 @@ class _HomeContainerState extends State<HomeContainer>
     );
   }
 
-  Widget _buildContentCard(
-      {required Widget child, double? offsets, double? spaces}) {
-    return Card(
-      margin: EdgeInsets.only(
-          top: (spaces! > 0 && offsets != null) ? offsets : spaces),
-      elevation: 10.0,
-      shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-      color: Theme.of(context).scaffoldBackgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30.0),
-          topRight: Radius.circular(30.0),
-        ),
-      ),
-      child: Container(
-        padding: EdgeInsets.only(
-          top: 20,
-        ),
-        width: double.infinity,
-        constraints: BoxConstraints(
-          minHeight: MediaQuery.of(context).size.height -
-              MediaQuery.of(context).size.height * 0.18,
-        ),
-        child: child,
-      ),
+  Widget _buildContentCard({required Widget child}) {
+    final double headerTapHeight = MediaQuery.of(context).size.height * 0.20;
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, currentOffset, _) {
+        final double spacerHeight =
+            (headerTapHeight - currentOffset).clamp(0.0, headerTapHeight);
+        final double topMargin = (spacerHeight > 0) ? currentOffset : 0.0;
+
+        return Card(
+          margin: EdgeInsets.only(top: topMargin),
+          elevation: 10.0,
+          shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+          color: Theme.of(context).scaffoldBackgroundColor,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(30.0),
+              topRight: Radius.circular(30.0),
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.only(top: 20),
+            width: double.infinity,
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).size.height * 0.18,
+            ),
+            child: child,
+          ),
+        );
+      },
     ).animate(
       controller: _animationController,
       effects: [
         SlideEffect(
           begin: const Offset(0, 0.2),
           end: Offset.zero,
-          duration: Duration(milliseconds: 650),
+          duration: const Duration(milliseconds: 650),
           curve: Curves.easeOutQuint,
         ),
       ],
@@ -167,10 +174,7 @@ class _HomeContainerState extends State<HomeContainer>
     );
   }
 
-  Widget _buildSlidersSubjectsAndLatestNotcies(
-      {ScrollController? ScrollControlContent,
-      double? offsets,
-      double? spaces}) {
+  Widget _buildSlidersSubjectsAndLatestNotcies({ScrollController? ScrollControlContent}) {
     return BlocConsumer<StudentSubjectsAndSlidersCubit,
         StudentSubjectsAndSlidersState>(
       listener: (context, state) {
@@ -195,10 +199,8 @@ class _HomeContainerState extends State<HomeContainer>
             child: SingleChildScrollView(
               padding: EdgeInsets.only(top: Utils.screenContentTopPadding / 2),
               controller: ScrollControlContent,
-              physics: AlwaysScrollableScrollPhysics(),
+              physics: const FasterScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               child: _buildContentCard(
-                offsets: offsets,
-                spaces: spaces,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -294,8 +296,6 @@ class _HomeContainerState extends State<HomeContainer>
               controller: ScrollControlContent,
               physics: AlwaysScrollableScrollPhysics(),
               child: _buildContentCard(
-                offsets: offsets,
-                spaces: spaces,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -323,8 +323,6 @@ class _HomeContainerState extends State<HomeContainer>
 
         // Loading state
         return _buildContentCard(
-          offsets: offsets,
-          spaces: spaces,
           child: HomeScreenDataLoadingContainer(
             addTopPadding: true,
           ),
@@ -590,8 +588,6 @@ class _HomeContainerState extends State<HomeContainer>
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final double headerTapHeight = MediaQuery.of(context).size.height * 0.20;
-    final double spacerHeight =
-        (headerTapHeight - _contentOffset).clamp(0.0, headerTapHeight);
 
     return Stack(
       children: [
@@ -616,37 +612,37 @@ class _HomeContainerState extends State<HomeContainer>
                 top: 20,
                 right: 20,
                 child:
-                    _buildDecorativeCircle(40, Colors.white.withValues(alpha: 0.08)),
+                    _buildDecorativeCircle(40, Colors.white.withValues(alpha: 0.08), isAnimated: false),
               ),
               Positioned(
                 top: 60,
                 left: -15,
                 child:
-                    _buildDecorativeCircle(60, Colors.white.withValues(alpha: 0.1)),
+                    _buildDecorativeCircle(60, Colors.white.withValues(alpha: 0.1), isAnimated: false),
               ),
               Positioned(
                 top: 90,
                 right: 60,
                 child:
-                    _buildDecorativeSquare(20, Colors.white.withValues(alpha: 0.12)),
+                    _buildDecorativeSquare(20, Colors.white.withValues(alpha: 0.12), isAnimated: false),
               ),
               Positioned(
                 top: 65,
                 left: 100,
                 child:
-                    _buildDecorativeSquare(15, Colors.white.withValues(alpha: 0.09)),
+                    _buildDecorativeSquare(15, Colors.white.withValues(alpha: 0.09), isAnimated: false),
               ),
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.4,
                 left: 30,
                 child:
-                    _buildDecorativeCircle(25, Colors.white.withValues(alpha: 0.06)),
+                    _buildDecorativeCircle(25, Colors.white.withValues(alpha: 0.06), isAnimated: false),
               ),
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.5,
                 right: 20,
                 child:
-                    _buildDecorativeSquare(30, Colors.white.withValues(alpha: 0.07)),
+                    _buildDecorativeSquare(30, Colors.white.withValues(alpha: 0.07), isAnimated: false),
               ),
               _buildHeaderSection(),
             ],
@@ -655,15 +651,22 @@ class _HomeContainerState extends State<HomeContainer>
         Positioned(
           child: Column(
             children: [
-              if (spacerHeight > 0)
-                IgnorePointer(
-                  ignoring: true,
-                  child: SizedBox(height: spacerHeight),
-                ),
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffsetNotifier,
+                builder: (context, currentOffset, _) {
+                  final double spacerHeight =
+                      (headerTapHeight - currentOffset).clamp(0.0, headerTapHeight);
+                  if (spacerHeight > 0) {
+                    return IgnorePointer(
+                      ignoring: true,
+                      child: SizedBox(height: spacerHeight),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               Expanded(
                 child: _buildSlidersSubjectsAndLatestNotcies(
-                  offsets: _contentOffset,
-                  spaces: spacerHeight,
                   ScrollControlContent: ScrollControlContent,
                 ),
               ),
@@ -671,6 +674,34 @@ class _HomeContainerState extends State<HomeContainer>
           ),
         )
       ],
+    );
+  }
+}
+
+class FasterScrollPhysics extends ScrollPhysics {
+  const FasterScrollPhysics({ScrollPhysics? parent}) : super(parent: parent);
+
+  @override
+  FasterScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return FasterScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    if (position.outOfRange) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    if (velocity.abs() < tolerance.velocity) {
+      return null;
+    }
+
+    // A lower 'drag' value makes the scroll glide further and smoother (less friction).
+    // Default is 0.135. We use 0.08 for a super smooth and fast feel.
+    return FrictionSimulation(
+      0.08,
+      position.pixels,
+      velocity,
     );
   }
 }

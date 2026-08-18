@@ -370,5 +370,7 @@
   "compressionFailed": "Compression Failed",
   "compressingFiles": "Compressing Files",
   "fileOf": "File",
-  "rememberMe": "Remember Me"
+  "rememberMe": "Remember Me",
+  "exam_results_published_title": "Exam Results Published",
+  "exam_results_published_body": "Results for '{exam_name}' have been published. Check your results now!"
 }

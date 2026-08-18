@@ -23,6 +23,7 @@ class SignInSuccess extends SignInState {
   final String schoolCode;
   final Guardian parent;
   final List<Student> children;
+  final List<Map<String, dynamic>> schools;
 
   SignInSuccess({
     required this.jwtToken,
@@ -31,10 +32,11 @@ class SignInSuccess extends SignInState {
     required this.parent,
     required this.schoolCode,
     this.children = const [],
+    this.schools = const [],
   });
 
   @override
-  List<Object?> get props => [jwtToken, isStudentLogIn, student, children];
+  List<Object?> get props => [jwtToken, isStudentLogIn, student, children, schools];
 }
 
 class SignInFailure extends SignInState {
@@ -44,6 +46,45 @@ class SignInFailure extends SignInState {
 
   @override
   List<Object?> get props => [];
+}
+
+class OtpRequestInProgress extends SignInState {
+  @override
+  List<Object?> get props => [];
+}
+
+class OtpRequestSuccess extends SignInState {
+  @override
+  List<Object?> get props => [];
+}
+
+class OtpRequestFailure extends SignInState {
+  final String errorMessage;
+  OtpRequestFailure(this.errorMessage);
+  @override
+  List<Object?> get props => [errorMessage];
+}
+
+class OtpRequestFailure444 extends SignInState {
+  @override
+  List<Object?> get props => [];
+}
+
+class OtpRequestFailure429 extends SignInState {
+  @override
+  List<Object?> get props => [];
+}
+
+class OtpVerifyInProgress extends SignInState {
+  @override
+  List<Object?> get props => [];
+}
+
+class OtpVerifyFailure extends SignInState {
+  final String errorMessage;
+  OtpVerifyFailure(this.errorMessage);
+  @override
+  List<Object?> get props => [errorMessage];
 }
 
 class SignInCubit extends Cubit<SignInState> {
@@ -87,6 +128,52 @@ class SignInCubit extends Cubit<SignInState> {
       );
     } catch (e) {
       emit(SignInFailure(e.toString()));
+    }
+  }
+
+  Future<void> requestOtp({required String identifier}) async {
+    emit(OtpRequestInProgress());
+    try {
+      await _authRepository.requestOtp(identifier: identifier);
+      emit(OtpRequestSuccess());
+    } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('444') || errorStr.contains('404')) {
+        emit(OtpRequestFailure444());
+      } else if (errorStr.contains('429')) {
+        emit(OtpRequestFailure429());
+      } else {
+        emit(OtpRequestFailure(errorStr));
+      }
+    }
+  }
+
+  Future<void> verifyOtp({
+    required String identifier,
+    required String otpCode,
+  }) async {
+    emit(OtpVerifyInProgress());
+    try {
+      final result = await _authRepository.verifyOtp(
+        identifier: identifier,
+        otpCode: otpCode,
+      );
+
+      final isStudent = result['userType'] == 'student';
+
+      emit(
+        SignInSuccess(
+          schoolCode: result['schoolCode'] ?? '',
+          jwtToken: result['jwtToken'],
+          isStudentLogIn: isStudent,
+          student: result['student'],
+          parent: result['parent'],
+          children: result['children'] ?? [],
+          schools: result['schools'] ?? [],
+        ),
+      );
+    } catch (e) {
+      emit(OtpVerifyFailure(e.toString()));
     }
   }
 }

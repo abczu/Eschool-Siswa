@@ -47,12 +47,13 @@ class _PlayPauseButtonContainerState extends State<PlayPauseButtonContainer> {
       });
     }
 
-    if ((widget.youtubePlayerController!.value.position >=
-            widget.youtubePlayerController!.metadata.duration) !=
-        _isCompleted) {
+    final duration = widget.youtubePlayerController!.metadata.duration;
+    final isCompleted = duration > Duration.zero &&
+        widget.youtubePlayerController!.value.position >= duration;
+
+    if (isCompleted != _isCompleted) {
       setState(() {
-        _isCompleted = widget.youtubePlayerController!.value.position >=
-            widget.youtubePlayerController!.metadata.duration;
+        _isCompleted = isCompleted;
       });
     }
   }
@@ -65,12 +66,13 @@ class _PlayPauseButtonContainerState extends State<PlayPauseButtonContainer> {
       });
     }
 
-    if ((widget.videoPlayerController!.value.position >=
-            widget.videoPlayerController!.value.duration) !=
-        _isCompleted) {
+    final duration = widget.videoPlayerController!.value.duration;
+    final isCompleted = duration > Duration.zero &&
+        widget.videoPlayerController!.value.position >= duration;
+
+    if (isCompleted != _isCompleted) {
       setState(() {
-        _isCompleted = widget.videoPlayerController!.value.position >=
-            widget.videoPlayerController!.value.duration;
+        _isCompleted = isCompleted;
       });
     }
   }

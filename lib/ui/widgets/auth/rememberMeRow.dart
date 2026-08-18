@@ -8,14 +8,14 @@ import 'package:flutter/material.dart';
 class RememberMeRow extends StatelessWidget {
   final bool rememberMe;
   final ValueChanged<bool> onRememberMeChanged;
-  final VoidCallback onForgotPassword;
+  final VoidCallback? onForgotPassword;
   final Color primaryColor;
 
   const RememberMeRow({
     Key? key,
     required this.rememberMe,
     required this.onRememberMeChanged,
-    required this.onForgotPassword,
+    this.onForgotPassword,
     required this.primaryColor,
   }) : super(key: key);
 
@@ -73,25 +73,26 @@ class RememberMeRow extends StatelessWidget {
         ),
 
         // Forgot Password button
-        TextButton(
-          onPressed: onForgotPassword,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        if (onForgotPassword != null)
+          TextButton(
+            onPressed: onForgotPassword,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              "${Utils.getTranslatedLabel(resetPasswordKey)}?",
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
             ),
           ),
-          child: Text(
-            "${Utils.getTranslatedLabel(resetPasswordKey)}?",
-            style: TextStyle(
-              color: primaryColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
-        ),
       ],
     );
   }

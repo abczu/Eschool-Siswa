@@ -40,24 +40,27 @@ class LoginTextField extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: isFocused
               ? [
                   BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.25),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
+                    color: primaryColor.withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
                   )
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   )
                 ],
           border: Border.all(
-            color: isFocused ? primaryColor : Colors.grey.shade200,
+            color: isFocused
+                ? primaryColor.withValues(alpha: 0.4)
+                : Colors.grey.shade200,
             width: 1.5,
           ),
         ),
@@ -65,14 +68,16 @@ class LoginTextField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 20, top: 10),
+              padding: const EdgeInsets.only(left: 20, top: 12),
               child: Text(
                 labelText,
                 style: TextStyle(
-                  color: isFocused ? primaryColor : Colors.grey.shade600,
-                  fontSize: 13,
+                  color: isFocused
+                      ? primaryColor.withValues(alpha: 0.8)
+                      : Colors.grey.shade500,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+                  letterSpacing: 0.4,
                 ),
               ),
             ),
@@ -84,7 +89,9 @@ class LoginTextField extends StatelessWidget {
                   child: Center(
                     child: Icon(
                       icon,
-                      color: isFocused ? primaryColor : Colors.grey.shade500,
+                      color: isFocused
+                          ? primaryColor.withValues(alpha: 0.7)
+                          : Colors.grey.shade400,
                       size: 20,
                     ),
                   ),
@@ -104,10 +111,11 @@ class LoginTextField extends StatelessWidget {
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontWeight: FontWeight.w400,
+                        fontSize: 14,
                       ),
                       border: InputBorder.none,
                       contentPadding:
-                          const EdgeInsets.symmetric(vertical: 14),
+                          const EdgeInsets.symmetric(vertical: 12),
                       isDense: true,
                     ),
                   ),
@@ -119,6 +127,7 @@ class LoginTextField extends StatelessWidget {
                   ),
               ],
             ),
+            const SizedBox(height: 4),
           ],
         ),
       ),

@@ -263,7 +263,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                     child: ElevatedButton.icon(
                       onPressed: () => _downloadReceipt(payments),
                       icon: const Icon(Icons.download),
-                      label: const Text('Unduh Struk'),
+                      label: const Text('Unduh'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,

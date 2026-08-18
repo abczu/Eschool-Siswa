@@ -499,5 +499,7 @@
   "compressionFailed": "Kompresi Gagal",
   "compressingFiles": "Mengkompres File",
   "fileOf": "File",
-  "rememberMe": "Ingat Saya"
+  "rememberMe": "Ingat Saya",
+  "exam_results_published_title": "Hasil Ujian Diumumkan",
+  "exam_results_published_body": "Hasil untuk '{exam_name}' telah dipublikasikan. Periksa hasil Anda sekarang!"
 }

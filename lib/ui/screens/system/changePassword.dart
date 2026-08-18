@@ -817,35 +817,41 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
                                                   strokeWidth: 2.5,
                                                 ),
                                               )
-                                            : Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    isButtonEnabled
-                                                        ? Icons
-                                                            .security_update_rounded
-                                                        : Icons
-                                                            .info_outline_rounded,
-                                                    color: isButtonEnabled
-                                                        ? Colors.white
-                                                        : Colors.grey.shade600,
-                                                    size: 20,
+                                            : FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(
+                                                        isButtonEnabled
+                                                            ? Icons
+                                                                .security_update_rounded
+                                                            : Icons
+                                                                .info_outline_rounded,
+                                                        color: isButtonEnabled
+                                                            ? Colors.white
+                                                            : Colors.grey.shade600,
+                                                        size: 20,
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      Text(
+                                                        buttonText,
+                                                        style: GoogleFonts.inter(
+                                                          color: isButtonEnabled
+                                                              ? Colors.white
+                                                              : Colors
+                                                                  .grey.shade600,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 15,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    buttonText,
-                                                    style: GoogleFonts.inter(
-                                                      color: isButtonEnabled
-                                                          ? Colors.white
-                                                          : Colors
-                                                              .grey.shade600,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 15,
-                                                    ),
-                                                  ),
-                                                ],
+                                                ),
                                               ),
                                       ),
                                     ),

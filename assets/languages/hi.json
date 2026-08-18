@@ -342,5 +342,7 @@
   "search": "खोज",
   "noSearchResults": "कोई खोज परिणाम नहीं मिला",
   "inactiveAccount": "Your account is inactive. Contact school administrator for further information",
-  "rememberMe": "मुझे याद रखें"
+  "rememberMe": "मुझे याद रखें",
+  "exam_results_published_title": "परीक्षा परिणाम घोषित",
+  "exam_results_published_body": "'{exam_name}' के परिणाम घोषित कर दिए गए हैं। अभी अपना परिणाम देखें!"
 }

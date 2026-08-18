@@ -45,12 +45,10 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
 
   /// Sanitasi URL gambar: konversi http:// → https:// agar gambar baru
   /// yang diupload backend tidak gagal dimuat karena mixed-content.
+  /// Di dev/testing mode, menggunakan HTTP jika URL merujuk ke domain dev.
   String _fixUrl(String? url) {
     if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http://')) {
-      return url.replaceFirst('http://', 'https://');
-    }
-    return url;
+    return Utils.fixImageUrl(url);
   }
 
   @override
@@ -207,7 +205,7 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                                 child: PinchZoom(
                                   maxScale: 2.5,
                                   child: Hero(
-                                    tag: "gallery_image_${galleryFile.id}",
+                                    tag: "gallery_image_${galleryFile.id ?? currentIndex}",
                                     child: galleryFile.isSvgImage()
                                         ? SvgPicture.network(
                                             _fixUrl(galleryFile.fileUrl),
@@ -542,107 +540,98 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
   }
 
   Widget _buildPhotosContainer() {
-    return LayoutBuilder(builder: (context, boxConstraints) {
-      final photos = widget.gallery.getImages();
-      if (photos.isEmpty) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Text(
-              Utils.getTranslatedLabel(noPhotosAvailableKey),
-              style: TextStyle(color: Colors.grey),
+    final photos = widget.gallery.getImages();
+    if (photos.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            Utils.getTranslatedLabel(noPhotosAvailableKey),
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: photos.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      itemBuilder: (context, index) {
+        final galleryFile = photos[index];
+        return GestureDetector(
+          onTap: () {
+            _showFullScreenImage(context, index);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Hero(
+              tag: "gallery_image_${galleryFile.id ?? index}",
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: galleryFile.isSvgImage()
+                    ? SvgPicture.network(
+                        _fixUrl(galleryFile.fileUrl),
+                        fit: BoxFit.cover,
+                        placeholderBuilder: (context) => Container(
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).colorScheme.primary),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: _fixUrl(galleryFile.fileUrl),
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).colorScheme.primary),
+                              ),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[200],
+                          child: Icon(Icons.error,
+                              color: Theme.of(context).colorScheme.primary),
+                        ),
+                      ),
+              ),
             ),
           ),
         );
-      }
-
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: photos
-            .map((galleryFile) => GestureDetector(
-                  onTap: () {
-                    // _showFullScreenImage(
-                    //     context,
-                    //     widget.gallery.getImages().indexWhere(
-                    //             (element) => element.id == galleryFile.id)
-                    //         as String);
-                    _showFullScreenImage(
-                      context,
-                      widget.gallery.getImages().indexWhere(
-                          (element) => element.id == galleryFile.id),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: galleryFile.isSvgImage()
-                          ? SvgPicture.network(
-                              _fixUrl(galleryFile.fileUrl),
-                              fit: BoxFit.cover,
-                              width: boxConstraints.maxWidth * 0.48,
-                              height: boxConstraints.maxWidth * 0.48,
-                              placeholderBuilder: (context) => Container(
-                                color: Colors.grey[200],
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Theme.of(context)
-                                              .colorScheme
-                                              .primary),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : CachedNetworkImage(
-                              imageUrl: _fixUrl(galleryFile.fileUrl),
-                              fit: BoxFit.cover,
-                              width: boxConstraints.maxWidth * 0.48,
-                              height: boxConstraints.maxWidth * 0.48,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey[200],
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Theme.of(context)
-                                              .colorScheme
-                                              .primary),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey[200],
-                                child: Icon(Icons.error,
-                                    color:
-                                        Theme.of(context).colorScheme.primary),
-                              ),
-                            ),
-                    ),
-                  ),
-                ))
-            .toList(),
-      );
-    });
+      },
+    );
   }
 
   Widget _buildVideosContainer() {
@@ -662,14 +651,14 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
     return Column(
       children: videos
           .map((galleryFile) => Container(
-                margin: EdgeInsets.only(bottom: 15),
+                margin: const EdgeInsets.only(bottom: 15),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 6,
-                      offset: Offset(0, 2),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -677,24 +666,51 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                   borderRadius: BorderRadius.circular(12),
                   child: Stack(
                     children: [
-                      YoutubePlayer(
-                          controller: YoutubePlayerController(
-                        initialVideoId: YoutubePlayer.convertUrlToId(
-                              galleryFile.fileUrl ?? "",
-                            ) ??
-                            "",
-                        flags: const YoutubePlayerFlags(
-                          autoPlay: false,
-                          hideThumbnail: true,
-                          hideControls: true,
+                      CachedNetworkImage(
+                        imageUrl: YoutubePlayer.getThumbnail(
+                          videoId: YoutubePlayer.convertUrlToId(
+                                galleryFile.fileUrl ?? "",
+                              ) ??
+                              "",
                         ),
-                      )),
+                        fit: BoxFit.cover,
+                        width: MediaQuery.of(context).size.width,
+                        height: 180,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          height: 180,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[200],
+                          height: 180,
+                          child: const Icon(Icons.error),
+                        ),
+                      ),
+                      // Play Button overlay
+                      Positioned.fill(
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                      ),
                       GestureDetector(
                         onTap: () {
                           _showFullScreenVideo(
                             context,
-                            widget.gallery.getVideos().indexWhere(
-                                (element) => element.id == galleryFile.id),
+                            videos.indexOf(galleryFile),
                           );
                         },
                         child: Container(
@@ -740,6 +756,7 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -904,125 +921,120 @@ class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer>
 
   @override
   Widget build(BuildContext context) {
-    return YoutubePlayerBuilder(
-      player: YoutubePlayer(
-        controller: _controller,
-        showVideoProgressIndicator: false, // Matikan agar tidak bentrok dengan kontrol kustom
-        onReady: () {
-          // Siap digunakan
-        },
-      ),
-      builder: (context, player) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Stack(
+          alignment: Alignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                VideoDoubleTapSkipOverlay(
+            VideoDoubleTapSkipOverlay(
+              youtubePlayerController: _controller,
+              onTap: () {
+                if (controlsMenuAnimationController.isCompleted) {
+                  controlsMenuAnimationController.reverse();
+                } else {
+                  controlsMenuAnimationController.forward();
+                }
+              },
+              child: YoutubePlayer(
+                controller: _controller,
+                showVideoProgressIndicator: false,
+                onReady: () {
+                  // Siap digunakan
+                },
+              ),
+            ),
+            // Tombol Kontrol di atas Video
+            AnimatedBuilder(
+              animation: controlsMenuAnimationController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: controlsMenuAnimation.value,
+                  child: IgnorePointer(
+                    ignoring: !controlsMenuAnimationController.isCompleted,
+                    child: child,
+                  ),
+                );
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Kontrol Pusat (Play/Pause/Skip) - Standar YouTube
+                  PlayPauseButtonContainer(
+                    isYoutubeVideo: true,
+                    youtubePlayerController: _controller,
+                    controlsAnimationController:
+                        controlsMenuAnimationController,
+                  ),
+                ],
+              ),
+            ),
+            // Garis Durasi (Slider) - Sekarang diletakkan di Stack utama agar benar-benar di bawah
+            AnimatedBuilder(
+              animation: controlsMenuAnimationController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: controlsMenuAnimation.value,
+                  child: IgnorePointer(
+                    ignoring: !controlsMenuAnimationController.isCompleted,
+                    child: child,
+                  ),
+                );
+              },
+              child: Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: VideoControlsContainer(
+                  isGalleryVideo: true,
+                  isYoutubeVideo: true,
                   youtubePlayerController: _controller,
-                  onTap: () {
-                    if (controlsMenuAnimationController.isCompleted) {
-                      controlsMenuAnimationController.reverse();
-                    } else {
-                      controlsMenuAnimationController.forward();
+                  controlsAnimationController:
+                      controlsMenuAnimationController,
+                  onFullscreenPressed: () async {
+                    // Simpan posisi saat ini
+                    final currentPosition = _controller.value.position;
+
+                    // Hentikan video di galeri dulu
+                    _controller.pause();
+
+                    // Langsung putar layar ke landscape
+                    SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.landscapeRight,
+                      DeviceOrientation.landscapeLeft,
+                    ]);
+
+                    // Buka pemutar video utama dengan data video ini dan tunggu hasilnya
+                    final result = await Get.toNamed(
+                      Routes.playVideo,
+                      arguments: {
+                        "currentlyPlayingVideo": StudyMaterial(
+                            id: 0,
+                            fileName: widget.youtubeId,
+                            fileThumbnail: YoutubePlayer.getThumbnail(
+                                videoId: widget.youtubeId),
+                            fileUrl:
+                                "https://www.youtube.com/watch?v=${widget.youtubeId}",
+                            fileExtension: "",
+                            studyMaterialType:
+                                StudyMaterialType.youtubeVideo),
+                        "relatedVideos": <StudyMaterial>[],
+                        "initialPosition": currentPosition,
+                      },
+                    );
+
+                    // Jika ada hasil (posisi terakhir dari fullscreen), sinkronkan kembali
+                    if (result != null && result is Duration) {
+                      _controller.seekTo(result);
+                      _controller.play(); // Langsung putar otomatis setelah kembali
                     }
                   },
-                  child: player,
                 ),
-                // Tombol Kontrol di atas Video
-                AnimatedBuilder(
-                  animation: controlsMenuAnimationController,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: controlsMenuAnimation.value,
-                      child: IgnorePointer(
-                        ignoring: !controlsMenuAnimationController.isCompleted,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Kontrol Pusat (Play/Pause/Skip) - Standar YouTube
-                      PlayPauseButtonContainer(
-                        isYoutubeVideo: true,
-                        youtubePlayerController: _controller,
-                        controlsAnimationController:
-                            controlsMenuAnimationController,
-                      ),
-                    ],
-                  ),
-                ),
-                // Garis Durasi (Slider) - Sekarang diletakkan di Stack utama agar benar-benar di bawah
-                AnimatedBuilder(
-                  animation: controlsMenuAnimationController,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: controlsMenuAnimation.value,
-                      child: IgnorePointer(
-                        ignoring: !controlsMenuAnimationController.isCompleted,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: VideoControlsContainer(
-                      isGalleryVideo: true,
-                      isYoutubeVideo: true,
-                      youtubePlayerController: _controller,
-                      controlsAnimationController:
-                          controlsMenuAnimationController,
-                      onFullscreenPressed: () async {
-                        // Simpan posisi saat ini
-                        final currentPosition = _controller.value.position;
-
-                        // Hentikan video di galeri dulu
-                        _controller.pause();
-
-                        // Langsung putar layar ke landscape
-                        SystemChrome.setPreferredOrientations([
-                          DeviceOrientation.landscapeRight,
-                          DeviceOrientation.landscapeLeft,
-                        ]);
-
-                        // Buka pemutar video utama dengan data video ini dan tunggu hasilnya
-                        final result = await Get.toNamed(
-                          Routes.playVideo,
-                          arguments: {
-                            "currentlyPlayingVideo": StudyMaterial(
-                                id: 0,
-                                fileName: widget.youtubeId,
-                                fileThumbnail: YoutubePlayer.getThumbnail(
-                                    videoId: widget.youtubeId),
-                                fileUrl:
-                                    "https://www.youtube.com/watch?v=${widget.youtubeId}",
-                                fileExtension: "",
-                                studyMaterialType:
-                                    StudyMaterialType.youtubeVideo),
-                            "relatedVideos": <StudyMaterial>[],
-                            "initialPosition": currentPosition,
-                          },
-                        );
-
-                        // Jika ada hasil (posisi terakhir dari fullscreen), sinkronkan kembali
-                        if (result != null && result is Duration) {
-                          _controller.seekTo(result);
-                          _controller.play(); // Langsung putar otomatis setelah kembali
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }

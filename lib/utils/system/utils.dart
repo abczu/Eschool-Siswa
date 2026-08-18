@@ -9,6 +9,7 @@ import 'package:eschool/data/models/academic/studyMaterial.dart';
 import 'package:eschool/data/repositories/academic/subjectRepository.dart';
 import 'package:eschool/ui/widgets/system/downloadFileBottomsheetContainer.dart';
 import 'package:eschool/ui/widgets/system/errorMessageOverlayContainer.dart';
+import 'package:eschool/utils/system/app_config.dart';
 import 'package:eschool/utils/system/constants.dart';
 import 'package:eschool/utils/system/errorMessageKeysAndCodes.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
@@ -651,11 +652,7 @@ class Utils {
   static String fixImageUrl(String url) {
     if (url.isEmpty) return url;
 
-    // First, convert http:// to https://
     String fixedUrl = url;
-    if (fixedUrl.startsWith('http://')) {
-      fixedUrl = fixedUrl.replaceFirst('http://', 'https://');
-    }
 
     // Check for duplicate prepended URL
     final lastHttpIndex = fixedUrl.lastIndexOf('http://');
@@ -667,9 +664,21 @@ class Utils {
       fixedUrl = fixedUrl.substring(lastHttpsIndex);
     }
 
-    // Convert to https again just in case the extracted URL was http
-    if (fixedUrl.startsWith('http://')) {
-      fixedUrl = fixedUrl.replaceFirst('http://', 'https://');
+    // In dev or testing mode, if the URL contains devsekolah or devapisekolah,
+    // convert it to http:// to avoid SSL certificate expiration issues
+    // since usesCleartextTraffic is enabled.
+    final bool isDevDomain = fixedUrl.contains('devsekolah.eschool.ac.id') ||
+                             fixedUrl.contains('devapisekolah.eschool.ac.id');
+    
+    if ((AppConfig.isDev || AppConfig.isTesting) && isDevDomain) {
+      if (fixedUrl.startsWith('https://')) {
+        fixedUrl = fixedUrl.replaceFirst('https://', 'http://');
+      }
+    } else {
+      // Otherwise, convert http:// to https://
+      if (fixedUrl.startsWith('http://')) {
+        fixedUrl = fixedUrl.replaceFirst('http://', 'https://');
+      }
     }
 
     return fixedUrl;

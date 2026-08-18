@@ -19,10 +19,12 @@ import 'package:get/get.dart';
 class ChildAssignmentsScreen extends StatefulWidget {
   final int childId;
   final List<Subject> subjects;
+  final String? initialTab;
   const ChildAssignmentsScreen({
     Key? key,
     required this.childId,
     required this.subjects,
+    this.initialTab,
   }) : super(key: key);
 
   @override
@@ -37,6 +39,7 @@ class ChildAssignmentsScreen extends StatefulWidget {
           builder: (context) {
             int childId;
             List<Subject> subjects;
+            String? initialTab;
             
             final authCubit = context.read<AuthCubit>();
             final isParent = authCubit.isParent();
@@ -57,6 +60,7 @@ class ChildAssignmentsScreen extends StatefulWidget {
               }
               
               subjects = arguments['subjects'] ?? [];
+              initialTab = arguments['initialTab'];
             } else if (arguments is int) {
               // Legacy: direct childId as argument
               childId = arguments;
@@ -77,6 +81,7 @@ class ChildAssignmentsScreen extends StatefulWidget {
             return ChildAssignmentsScreen(
               childId: childId,
               subjects: subjects,
+              initialTab: initialTab,
             );
           },
         ));
@@ -84,7 +89,7 @@ class ChildAssignmentsScreen extends StatefulWidget {
 }
 
 class _ChildAssignmentsScreenState extends State<ChildAssignmentsScreen> {
-  String _assignmentStatusTabTitle = assignedKey;
+  late String _assignmentStatusTabTitle = widget.initialTab ?? assignedKey;
 
   int _currentlySelectedClassSubjectId = 0;
 

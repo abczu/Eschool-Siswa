@@ -922,7 +922,7 @@ class _PaymentHistoryTabScreenState extends State<PaymentHistoryTabScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => {_downloadReceipt(payments)},
                       icon: const Icon(Icons.download, size: 18),
-                      label: const Text('Unduh Struk',
+                      label: const Text('Unduh',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(

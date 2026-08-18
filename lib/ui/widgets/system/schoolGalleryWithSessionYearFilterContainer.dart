@@ -65,12 +65,7 @@ class _SchoolGalleryWithSessionYearFilterContainerState
     if (url == null || url.isEmpty) {
       return '';
     }
-    // Konversi http:// → https:// untuk semua domain agar foto baru
-    // yang diupload backend tidak gagal karena mixed-content.
-    if (url.startsWith('http://')) {
-      return url.replaceFirst('http://', 'https://');
-    }
-    return url;
+    return Utils.fixImageUrl(url);
   }
 
   Widget _buildAppBar() {

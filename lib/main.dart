@@ -8,6 +8,7 @@ import 'package:eschool/utils/system/logHelper.dart';
 import 'package:eschool/utils/system/hiveBoxKeys.dart';
 import 'package:eschool/utils/system/vibrationHelper.dart';
 import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:firebase_core/firebase_core.dart';
@@ -16,6 +17,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:eschool/utils/system/appLanguages.dart';
 
 ///[V.1.4.1]
 ///
@@ -26,6 +30,91 @@ import 'package:get/get.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("📨 Pesan background diterima: ${message.notification?.title}");
+
+  try {
+    await AwesomeNotifications().initialize(
+      null,
+      [
+        NotificationChannel(
+          channelKey: 'basic_channel',
+          channelName: 'Basic Notifications',
+          channelDescription: 'Notification channel for basic notifications',
+          defaultColor: const Color(0xFF9D50DD),
+          importance: NotificationImportance.High,
+          channelShowBadge: true,
+        )
+      ],
+      debug: true,
+    );
+  } catch (e) {
+    debugPrint("⚠️ Gagal inisialisasi AwesomeNotifications di background: $e");
+  }
+
+  final type = (message.data['type'] ?? '').toString().trim().toLowerCase().replaceAll('-', '_');
+  if (type == 'exam_results_published' || type == 'exam_result_published') {
+    // Hanya tampilkan local notification jika pesan dikirim sebagai data-only (silent push)
+    // untuk menghindari duplikasi notifikasi (satu dari FCM system, satu dari AwesomeNotifications)
+    if (message.notification != null) {
+      debugPrint("🚫 FCM: Skip local notification karena FCM system notification sudah ditampilkan.");
+      return;
+    }
+
+    try {
+      await Hive.initFlutter();
+    } catch (_) {}
+
+    String langCode = defaultLanguageCode;
+    try {
+      final settingsBox = await Hive.openBox(settingsBoxKey);
+      langCode = settingsBox.get(currentLanguageCodeKey) ?? defaultLanguageCode;
+    } catch (e) {
+      debugPrint("⚠️ Gagal mengambil pengaturan bahasa di background: $e");
+    }
+
+    final title = await _translateFCMKey('exam_results_published_title', langCode, message.data);
+    final body = await _translateFCMKey('exam_results_published_body', langCode, message.data);
+
+    try {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          channelKey: 'basic_channel',
+          title: title,
+          body: body,
+          notificationLayout: NotificationLayout.BigText, // Gunakan BigText agar tidak terpotong
+          payload: Map<String, String>.from(message.data.map((key, val) => MapEntry(key.toString(), val.toString()))),
+        ),
+      );
+    } catch (e) {
+      debugPrint("⚠️ Gagal menampilkan local notification: $e");
+    }
+  }
+}
+
+Future<String> _translateFCMKey(String key, String langCode, Map<String, dynamic> data) async {
+  try {
+    final jsonString = await rootBundle.loadString('assets/languages/$langCode.json');
+    final Map<String, dynamic> translations = json.decode(jsonString);
+    String text = translations[key] ?? key;
+    if (data.containsKey('exam_name')) {
+      text = text.replaceAll('{exam_name}', data['exam_name'].toString());
+    } else if (data.containsKey('examName')) {
+      text = text.replaceAll('{exam_name}', data['examName'].toString());
+    }
+    return text;
+  } catch (e) {
+    debugPrint("⚠️ Gagal memuat lokalisasi background: $e");
+    if (key == 'exam_results_published_title') {
+      return langCode == 'id' ? 'Hasil Ujian Diumumkan' : 'Exam Results Published';
+    }
+    if (key == 'exam_results_published_body') {
+      final examName = data['exam_name'] ?? data['examName'] ?? '';
+      return langCode == 'id'
+          ? "Hasil untuk '$examName' telah dipublikasikan. Periksa hasil Anda sekarang!"
+          : "Results for '$examName' have been published. Check your results now!";
+    }
+    return key;
+  }
 }
 
 Future<void> main() async {
@@ -52,6 +141,30 @@ Future<void> setupFCM() async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
+  }
+
+  // --- INIT AWESOME NOTIFICATIONS IN FOREGROUND ---
+  try {
+    await AwesomeNotifications().initialize(
+      null,
+      [
+        NotificationChannel(
+          channelKey: 'basic_channel',
+          channelName: 'Basic Notifications',
+          channelDescription: 'Notification channel for basic notifications',
+          defaultColor: const Color(0xFF9D50DD),
+          importance: NotificationImportance.High,
+          channelShowBadge: true,
+        )
+      ],
+      debug: true,
+    );
+
+    AwesomeNotifications().setListeners(
+      onActionReceivedMethod: onActionReceivedMethod,
+    );
+  } catch (e) {
+    debugPrint("⚠️ Gagal setup AwesomeNotifications: $e");
   }
 
   // Izin notifikasi (Android 13+ & iOS)
@@ -108,8 +221,21 @@ Future<void> setupFCM() async {
     await VibrationHelper.notificationVibration();
     final type = (message.data['type'] ?? '')
         .toString(); // 'announcement' | 'izin' | 'tagihan' | 'tugas' | ...
-    final title = (message.notification?.title ?? 'Notifikasi').toString();
-    final body = (message.notification?.body ?? '').toString();
+    
+    String title = (message.notification?.title ?? 'Notifikasi').toString();
+    String body = (message.notification?.body ?? '').toString();
+
+    // Lakukan lokalisasi on-device untuk hasil ujian di foreground
+    final normalizedType = type.trim().toLowerCase().replaceAll('-', '_');
+    if (normalizedType == 'exam_results_published' || normalizedType == 'exam_result_published') {
+      try {
+        final examName = (message.data['exam_name'] ?? message.data['examName'] ?? '').toString();
+        title = 'exam_results_published_title'.tr;
+        body = 'exam_results_published_body'.tr.replaceAll('{exam_name}', examName);
+      } catch (e) {
+        debugPrint("⚠️ Error foreground translation: $e");
+      }
+    }
 
     debugPrint("📨 FCM Type: $type");
     // mapping type -> style
@@ -200,14 +326,31 @@ void _handleNotificationClick(RemoteMessage message) {
 
 /// Enhance notification arguments dengan childId untuk parent
 Map<String, dynamic> _enhanceNotificationArguments(Map<String, dynamic> data) {
+  final Map<String, dynamic> enhanced = Map<String, dynamic>.from(data);
   try {
+    final type = (data['type'] ?? '').toString().trim().toLowerCase().replaceAll('-', '_');
+
+    // Check if the notification is for an assignment status / submission update
+    final isAssignmentSubmissionAction = 
+        type == 'assignment_approved' ||
+        type == 'assignment_graded' ||
+        type == 'assignment_reviewed' ||
+        type == 'assignment_rejected' ||
+        type == 'assignment_submission_updated' ||
+        type == 'assignment_status' ||
+        type == 'assignment_submission';
+
+    if (isAssignmentSubmissionAction) {
+      enhanced['initialTab'] = 'submitted';
+    }
+
     final authBox = Hive.box(authBoxKey);
     final isStudent = authBox.get(isStudentLogInKey) ?? false;
 
     // Jika student, return data as is
     if (isStudent) {
-      debugPrint('📱 User adalah student, tidak perlu enhance');
-      return data;
+      debugPrint('📱 User adalah student, tidak perlu enhance childId');
+      return enhanced;
     }
 
     // Jika parent, inject childId dari active child
@@ -223,10 +366,7 @@ Map<String, dynamic> _enhanceNotificationArguments(Map<String, dynamic> data) {
       debugPrint('✅ ChildId ditemukan: $childId');
 
       // Return enhanced arguments dengan childId
-      return {
-        ...data,
-        'childId': childId,
-      };
+      enhanced['childId'] = childId;
     } else {
       debugPrint('⚠️ Parent tidak punya children data');
     }
@@ -234,8 +374,8 @@ Map<String, dynamic> _enhanceNotificationArguments(Map<String, dynamic> data) {
     debugPrint('⚠️ Error saat enhance arguments: $e');
   }
 
-  // Fallback: return data as is
-  return data;
+  // Fallback: return enhanced
+  return enhanced;
 }
 
 int? _normalizeLeaveStatus(dynamic status) {
@@ -268,7 +408,18 @@ PushType mapPushType(String? rawType, {dynamic status}) {
 
   return switch (key) {
     // Assignment / Tugas
-    'assignment_created' || 'assignment_updated' || 'tugas' => PushType.info,
+    'assignment_created' ||
+    'assignment_updated' ||
+    'assignment_new' ||
+    'assignment_update' ||
+    'assignment_status' ||
+    'assignment_submission' ||
+    'tugas' => PushType.info,
+    'assignment_approved' || 'assignment_graded' || 'assignment_reviewed' => PushType.success,
+    'assignment_rejected' => PushType.error,
+    'assignment_submission_updated' => status.toString() == '2'
+        ? PushType.error
+        : PushType.success,
 
     // Pembayaran / Tagihan
     'payment_status_changed' => PushType.info,
@@ -280,7 +431,7 @@ PushType mapPushType(String? rawType, {dynamic status}) {
 
     // Exam (luring)
     'exam_created' => PushType.info,
-    'exam_result_published' => PushType.success,
+    'exam_result_published' || 'exam_results_published' => PushType.success,
     'exam_marks_updated' => PushType.info,
 
     // Online Exam
@@ -334,6 +485,13 @@ String? mapPushRoute(String? rawType, {dynamic payload}) {
     'assignment_updated' ||
     'assignment_new' ||
     'assignment_update' ||
+    'assignment_graded' ||
+    'assignment_reviewed' ||
+    'assignment_status' ||
+    'assignment_submission' ||
+    'assignment_approved' ||
+    'assignment_rejected' ||
+    'assignment_submission_updated' ||
     'tugas' =>
       '/childAssignments',
 
@@ -346,6 +504,7 @@ String? mapPushRoute(String? rawType, {dynamic payload}) {
     // Exam
     'exam_created' ||
     'exam_result_published' ||
+    'exam_results_published' ||
     'exam_marks_updated' =>
       '/exam',
 
@@ -397,4 +556,32 @@ void showAnnouncementDialog(String? title, String? body) {
     ),
     barrierDismissible: true,
   );
+}
+
+@pragma('vm:entry-point')
+Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
+  final payload = receivedAction.payload;
+  if (payload != null) {
+    final type = (payload['type'] ?? '').toString();
+    final route = mapPushRoute(type, payload: payload);
+    if (route != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            final authBox = Hive.box(authBoxKey);
+            final isLoggedIn = authBox.get(isLogInKey) ?? false;
+            final enhancedArguments = _enhanceNotificationArguments(payload);
+            if (isLoggedIn) {
+              Get.toNamed(route, arguments: enhancedArguments);
+            } else {
+              authBox.put(pendingNotificationRouteKey, route);
+              authBox.put(pendingNotificationArgumentsKey, enhancedArguments);
+            }
+          } catch (e) {
+            debugPrint("⚠️ Error saat handle local notification click: $e");
+          }
+        });
+      });
+    }
+  }
 }

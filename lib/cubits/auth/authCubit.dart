@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:eschool/data/models/auth/guardian.dart';
 import 'package:eschool/data/models/auth/student.dart';
@@ -254,6 +254,10 @@ class AuthCubit extends Cubit<AuthState> {
   void signOut() {
     authRepository.signOutUser();
     emit(Unauthenticated());
+  }
+
+  void forceSignOut() {
+    signOut();
   }
 
   int getUserId() {

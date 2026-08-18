@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:eschool/ui/screens/system/aboutUsScreen.dart';
 import 'package:eschool/ui/screens/academic/assignment/assignmentScreen.dart';
 import 'package:eschool/ui/screens/auth/authScreen.dart';
+import 'package:eschool/ui/screens/auth/otpVerificationScreen.dart';
 import 'package:eschool/ui/screens/auth/parentLoginScreen.dart';
 import 'package:eschool/ui/screens/auth/studentLoginScreen.dart';
 import 'package:eschool/ui/screens/system/changePassword.dart';
@@ -70,6 +71,7 @@ class Routes {
   static const String auth = "/auth";
   static const String parentLogin = "/parentLogin";
   static const String studentLogin = "/studentLogin";
+  static const String otpVerification = "/otpVerification";
   static const String studentProfile = "/studentProfile";
   static const String assignment = "/assignment";
 
@@ -148,6 +150,7 @@ class Routes {
     GetPage(name: auth, page: () => AuthScreen.routeInstance()),
     GetPage(name: studentLogin, page: () => StudentLoginScreen.routeInstance()),
     GetPage(name: parentLogin, page: () => ParentLoginScreen.routeInstance()),
+    GetPage(name: otpVerification, page: () => OtpVerificationScreen.routeInstance()),
     GetPage(name: parentHome, page: () => ParentHomeScreen.routeInstance()),
     GetPage(
         name: studentProfile, page: () => StudentProfileScreen.routeInstance()),

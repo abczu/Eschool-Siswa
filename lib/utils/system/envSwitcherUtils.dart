@@ -219,6 +219,7 @@ class EnvSwitcherUtil {
     final authRepository = context.read<AuthCubit>().authRepository;
     authRepository.clearStudentCredentials();
     authRepository.setRememberMeStudent(false);
+    await authRepository.clearOtpCredentials();
 
     await AppConfig.setEnvironment(env);
 

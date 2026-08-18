@@ -37,25 +37,50 @@ class StudyMaterialWithDownloadButtonContainer2 extends StatelessWidget {
         fileName.endsWith('.webp');
   }
 
-  bool _isImage(StudyMaterial m) => _isImageName(m.fileName);
+  bool _isImage(StudyMaterial m) {
+    final ext = m.fileExtension.toLowerCase().replaceAll('.', '');
+    if (ext == 'jpg' ||
+        ext == 'jpeg' ||
+        ext == 'png' ||
+        ext == 'gif' ||
+        ext == 'webp' ||
+        ext == 'heic' ||
+        ext == 'heif') {
+      return true;
+    }
+    final urlPath = m.fileUrl.split('?').first.toLowerCase();
+    if (urlPath.endsWith('.jpg') ||
+        urlPath.endsWith('.jpeg') ||
+        urlPath.endsWith('.png') ||
+        urlPath.endsWith('.gif') ||
+        urlPath.endsWith('.webp')) {
+      return true;
+    }
+    return _isImageName(m.fileName);
+  }
 
   IconData _getFileTypeIcon() {
+    if (_isImage(studyMaterial)) return Icons.image;
+
     final fileName = studyMaterial.fileName.toLowerCase();
-    if (_isImageName(fileName)) return Icons.image;
-    if (fileName.endsWith('.mp4') ||
-        fileName.endsWith('.avi') ||
-        fileName.endsWith('.mov') ||
-        fileName.endsWith('.mkv')) return Icons.video_file;
-    if (fileName.endsWith('.mp3') ||
-        fileName.endsWith('.wav') ||
-        fileName.endsWith('.ogg')) return Icons.audio_file;
-    if (fileName.endsWith('.pdf')) return Icons.picture_as_pdf;
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx'))
-      return Icons.description;
-    if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx'))
-      return Icons.table_chart;
-    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx'))
-      return Icons.slideshow;
+    final urlPath = studyMaterial.fileUrl.split('?').first.toLowerCase();
+    final ext = studyMaterial.fileExtension.toLowerCase().replaceAll('.', '');
+
+    bool hasExt(String suffix) =>
+        fileName.endsWith('.$suffix') ||
+        urlPath.endsWith('.$suffix') ||
+        ext == suffix;
+
+    if (hasExt('mp4') || hasExt('avi') || hasExt('mov') || hasExt('mkv')) {
+      return Icons.video_file;
+    }
+    if (hasExt('mp3') || hasExt('wav') || hasExt('ogg')) {
+      return Icons.audio_file;
+    }
+    if (hasExt('pdf')) return Icons.picture_as_pdf;
+    if (hasExt('doc') || hasExt('docx')) return Icons.description;
+    if (hasExt('xls') || hasExt('xlsx')) return Icons.table_chart;
+    if (hasExt('ppt') || hasExt('pptx')) return Icons.slideshow;
     return Icons.insert_drive_file;
   }
 
@@ -164,7 +189,7 @@ class StudyMaterialWithDownloadButtonContainer2 extends StatelessWidget {
 
     // Kartu kecil dengan thumbnail jika gambar
     final isImage = _isImage(studyMaterial);
-    final fileUrl = studyMaterial.fileUrl;
+    final fileUrl = Utils.fixImageUrl(studyMaterial.fileUrl);
 
     return GestureDetector(
       onTap: isImage
@@ -276,7 +301,7 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
               itemCount: total,
               itemBuilder: (context, i) {
                 final item = widget.items[i];
-                final url = item.fileUrl;
+                final url = Utils.fixImageUrl(item.fileUrl);
 
                 return Center(
                   child: CachedNetworkImage(

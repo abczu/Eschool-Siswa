@@ -341,5 +341,7 @@
   "search": "تلاش کریں۔",
   "noSearchResults": "تلاش کے کوئی نتائج نہیں ملے",
   "inactiveAccount": "Your account is inactive. Contact school administrator for further information",
-  "rememberMe": "مجھے یاد رکھیں"
+  "rememberMe": "مجھے یاد رکھیں",
+  "exam_results_published_title": "امتحان کے نتائج شائع ہو گئے",
+  "exam_results_published_body": "'{exam_name}' کے نتائج شائع کر دیے گئے ہیں۔ ابھی اپنا نتیجہ دیکھیں!"
 }

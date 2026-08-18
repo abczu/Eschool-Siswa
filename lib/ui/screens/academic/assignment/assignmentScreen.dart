@@ -12,6 +12,7 @@ import 'package:eschool/ui/screens/academic/assignment/widgets/undoAssignmentBot
 import 'package:eschool/ui/screens/academic/assignment/widgets/uploadAssignmentFilesBottomsheetContainer.dart';
 import 'package:eschool/ui/widgets/system/customBackButton.dart';
 import 'package:eschool/ui/widgets/system/screenTopBackgroundContainer.dart';
+import 'package:eschool/utils/system/errorMessageKeysAndCodes.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
@@ -107,14 +108,17 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     ).then((value) {
       if (value != null) {
         if (value['error']) {
+          final rawMsg = value['message'].toString();
+          final String errMsg = RegExp(r'^\d+$').hasMatch(rawMsg)
+              ? Utils.getErrorMessageFromErrorCode(
+                  context,
+                  rawMsg,
+                  source: "tugas",
+                )
+              : ErrorMessageMapper.getUserFriendlyMessage(rawMsg);
           Utils.showCustomSnackBar(
             context: context,
-            errorMessage: "Terjadi kesalahan: " +
-                Utils.getErrorMessageFromErrorCode(
-                  context,
-                  value['message'].toString(),
-                  source: "tugas",
-                ),
+            errorMessage: errMsg,
             backgroundColor: Theme.of(context).colorScheme.error,
           );
         } else {
@@ -143,13 +147,17 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     ).then((value) {
       if (value != null) {
         if (value['error']) {
+          final rawMsg = value['message'].toString();
+          final String errMsg = RegExp(r'^\d+$').hasMatch(rawMsg)
+              ? Utils.getErrorMessageFromErrorCode(
+                  context,
+                  rawMsg,
+                  source: "tugas",
+                )
+              : ErrorMessageMapper.getUserFriendlyMessage(rawMsg);
           Utils.showCustomSnackBar(
             context: context,
-            errorMessage: Utils.getErrorMessageFromErrorCode(
-              context,
-              value['message'].toString(),
-              source: "tugas",
-            ),
+            errorMessage: errMsg,
             backgroundColor: Theme.of(context).colorScheme.error,
           );
         } else {

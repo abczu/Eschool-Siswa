@@ -1,4 +1,6 @@
 import 'package:eschool/cubits/auth/forgotPasswordRequestCubit.dart';
+import 'package:eschool/cubits/auth/signInCubit.dart';
+import 'package:eschool/app/routes.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
@@ -19,15 +21,18 @@ class _ForgotPasswordRequestBottomsheetState
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailTextEditingController =
       TextEditingController();
+  final TextEditingController _phoneTextEditingController =
+      TextEditingController();
 
   late AnimationController _animationController;
   final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _phoneFocusNode = FocusNode();
 
   // Define the red color scheme
   final Color _primaryRed = const Color(0xFFE63946);
   final Color _secondaryRed = const Color(0xFFFF8A80);
   final Color _textDark = const Color(0xFF1D3557);
-  final Color _bgWhite = Colors.white; // Changed to white
+  final Color _bgWhite = Colors.white;
 
   @override
   void initState() {
@@ -38,6 +43,7 @@ class _ForgotPasswordRequestBottomsheetState
     );
 
     _emailFocusNode.addListener(_handleFocusChange);
+    _phoneFocusNode.addListener(_handleFocusChange);
 
     // Start the animation when the bottomsheet opens
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -52,8 +58,10 @@ class _ForgotPasswordRequestBottomsheetState
   @override
   void dispose() {
     _emailTextEditingController.dispose();
+    _phoneTextEditingController.dispose();
     _animationController.dispose();
     _emailFocusNode.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
@@ -67,7 +75,7 @@ class _ForgotPasswordRequestBottomsheetState
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       decoration: BoxDecoration(
-        color: _bgWhite, // Using white color here
+        color: _bgWhite,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
@@ -125,7 +133,7 @@ class _ForgotPasswordRequestBottomsheetState
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        Utils.getTranslatedLabel(forgotPasswordKey),
+                        "Lupa Kata Sandi",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -155,9 +163,9 @@ class _ForgotPasswordRequestBottomsheetState
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 30),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Text(
-                    "Masukkan informasi akun Anda untuk mendapatkan email pemulihan kata sandi.",
+                    "Silakan pilih cara untuk masuk kembali ke akun Anda di bawah ini:",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -175,18 +183,18 @@ class _ForgotPasswordRequestBottomsheetState
                 end: Offset.zero,
               ).animate(CurvedAnimation(
                 parent: _animationController,
-                curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic),
+                curve: const Interval(0.3, 0.8, curve: Curves.easeOutCubic),
               )),
               child: FadeTransition(
                 opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
                   CurvedAnimation(
                     parent: _animationController,
-                    curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
+                    curve: const Interval(0.3, 0.8, curve: Curves.easeOut),
                   ),
                 ),
                 child: _buildInputField(
                   icon: Icons.email_rounded,
-                  hintText: Utils.getTranslatedLabel(emailKey),
+                  hintText: "Masukkan Email terdaftar",
                   controller: _emailTextEditingController,
                   focusNode: _emailFocusNode,
                   keyboardType: TextInputType.emailAddress,
@@ -194,22 +202,22 @@ class _ForgotPasswordRequestBottomsheetState
               ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
-            // Submit button
+            // Submit button (Reset Link)
             SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(0, 0.2),
                 end: Offset.zero,
               ).animate(CurvedAnimation(
                 parent: _animationController,
-                curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+                curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic),
               )),
               child: FadeTransition(
                 opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
                   CurvedAnimation(
                     parent: _animationController,
-                    curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+                    curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
                   ),
                 ),
                 child: BlocConsumer<ForgotPasswordRequestCubit,
@@ -242,9 +250,87 @@ class _ForgotPasswordRequestBottomsheetState
               ),
             ),
 
+            const SizedBox(height: 24),
+
+            // Divider
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    "ATAU",
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Masuk dengan OTP Title
+            Text(
+              "Masuk dengan OTP",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Phone input field for OTP
+            _buildInputField(
+              icon: Icons.phone_android_rounded,
+              hintText: "Masukkan Nomor HP terdaftar",
+              controller: _phoneTextEditingController,
+              focusNode: _phoneFocusNode,
+              keyboardType: TextInputType.phone,
+            ),
+
             const SizedBox(height: 20),
 
-            // Back to login button
+            BlocConsumer<SignInCubit, SignInState>(
+              listener: (context, state) {
+                if (state is OtpRequestSuccess) {
+                  Get.back(); // close bottom sheet
+                  Get.toNamed(
+                    Routes.otpVerification,
+                    arguments: {"identifier": _phoneTextEditingController.text.trim()},
+                  );
+                } else if (state is OtpRequestFailure) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: state.errorMessage,
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                } else if (state is OtpRequestFailure444) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: "Nomor HP belum terdaftar",
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                } else if (state is OtpRequestFailure429) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: "Terlalu banyak permintaan OTP. Silakan tunggu beberapa saat.",
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                }
+              },
+              builder: (context, state) {
+                return _buildOtpButton(context, state);
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Back button
             SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(0, 0.2),
@@ -364,13 +450,6 @@ class _ForgotPasswordRequestBottomsheetState
                   onPressed: () => controller.clear(),
                 )
               : null,
-          // Add a bottom line for extra clarity
-          // enabledBorder: UnderlineInputBorder(
-          //   borderSide: BorderSide(color: Colors.grey[200]!, width: 0.5),
-          // ),
-          // focusedBorder: UnderlineInputBorder(
-          //   borderSide: BorderSide(color: _primaryRed, width: 0.5),
-          // ),
         ),
         onChanged: (value) {
           setState(() {});
@@ -392,9 +471,7 @@ class _ForgotPasswordRequestBottomsheetState
               if (_emailTextEditingController.text.trim().isEmpty) {
                 Utils.showCustomSnackBar(
                   context: context,
-                  errorMessage: Utils.getTranslatedLabel(
-                    pleaseEnterEmailKey,
-                  ),
+                  errorMessage: Utils.getTranslatedLabel(pleaseEnterEmailKey),
                   backgroundColor: Theme.of(context).colorScheme.error,
                 );
                 _emailFocusNode.requestFocus();
@@ -405,7 +482,8 @@ class _ForgotPasswordRequestBottomsheetState
               HapticFeedback.mediumImpact();
 
               context.read<ForgotPasswordRequestCubit>().requestforgotPassword(
-                  email: _emailTextEditingController.text.trim());
+                    email: _emailTextEditingController.text.trim(),
+                  );
             },
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryRed,
@@ -430,9 +508,9 @@ class _ForgotPasswordRequestBottomsheetState
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  Utils.getTranslatedLabel(submitKey),
-                  style: const TextStyle(
+                const Text(
+                  "Kirim Link Atur Ulang",
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
@@ -442,6 +520,73 @@ class _ForgotPasswordRequestBottomsheetState
                 const Icon(
                   Icons.send_rounded,
                   size: 20,
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildOtpButton(BuildContext context, SignInState state) {
+    final isLoading = state is OtpRequestInProgress;
+
+    return ElevatedButton(
+      onPressed: isLoading
+          ? null
+          : () {
+              FocusScope.of(context).unfocus();
+
+              final identifier = _phoneTextEditingController.text.trim();
+              if (identifier.isEmpty) {
+                Utils.showCustomSnackBar(
+                  context: context,
+                  errorMessage: "Silakan masukkan Nomor HP Anda terlebih dahulu",
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                );
+                _phoneFocusNode.requestFocus();
+                return;
+              }
+
+              HapticFeedback.mediumImpact();
+
+              context.read<SignInCubit>().requestOtp(identifier: identifier);
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: _primaryRed,
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(50),
+          side: BorderSide(color: _primaryRed, width: 2),
+        ),
+        elevation: 0,
+        minimumSize: const Size(200, 55),
+      ),
+      child: isLoading
+          ? SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryRed),
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Kirim Kode OTP",
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryRed,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: _primaryRed,
                 ),
               ],
             ),

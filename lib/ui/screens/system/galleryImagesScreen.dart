@@ -35,10 +35,7 @@ class _GalleryImagesScreenState extends State<GalleryImagesScreen> {
 
   String _fixUrl(String? url) {
     if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http://')) {
-      return url.replaceFirst('http://', 'https://');
-    }
-    return url;
+    return Utils.fixImageUrl(url);
   }
 
   @override

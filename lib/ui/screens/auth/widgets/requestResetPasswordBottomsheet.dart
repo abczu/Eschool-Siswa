@@ -1,4 +1,7 @@
 import 'package:eschool/cubits/auth/resetPasswordRequestCubit.dart';
+import 'package:eschool/cubits/auth/signInCubit.dart';
+import 'package:eschool/app/routes.dart';
+import 'package:eschool/utils/system/constants.dart';
 import 'package:eschool/utils/system/hiveBoxKeys.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/utils.dart';
@@ -20,14 +23,14 @@ class _RequestResetPasswordBottomsheetState
     with SingleTickerProviderStateMixin {
   final TextEditingController _grNumberTextEditingController =
       TextEditingController();
-  final TextEditingController _schoolCodeTextEditingController =
+  final TextEditingController _otpIdentifierController =
       TextEditingController();
 
   DateTime? dateOfBirth;
 
   late AnimationController _animationController;
   final FocusNode _grNumberFocusNode = FocusNode();
-  final FocusNode _schoolCodeFocusNode = FocusNode();
+  final FocusNode _otpIdentifierFocusNode = FocusNode();
 
   // Define the red color scheme
   final Color _primaryRed = const Color(0xFFE63946);
@@ -44,7 +47,7 @@ class _RequestResetPasswordBottomsheetState
     );
 
     _grNumberFocusNode.addListener(_handleFocusChange);
-    _schoolCodeFocusNode.addListener(_handleFocusChange);
+    _otpIdentifierFocusNode.addListener(_handleFocusChange);
 
     // Start the animation when the bottomsheet opens
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -59,10 +62,10 @@ class _RequestResetPasswordBottomsheetState
   @override
   void dispose() {
     _grNumberTextEditingController.dispose();
-    _schoolCodeTextEditingController.dispose();
+    _otpIdentifierController.dispose();
     _animationController.dispose();
     _grNumberFocusNode.dispose();
-    _schoolCodeFocusNode.dispose();
+    _otpIdentifierFocusNode.dispose();
     super.dispose();
   }
 
@@ -138,7 +141,7 @@ class _RequestResetPasswordBottomsheetState
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        Utils.getTranslatedLabel(resetPasswordKey),
+                        "Lupa Kata Sandi",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -168,9 +171,9 @@ class _RequestResetPasswordBottomsheetState
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 30),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Text(
-                    "Masukkan data berikut untuk mengatur ulang kata sandi Anda.",
+                    "Silakan pilih cara untuk masuk kembali ke akun Anda di bawah ini:",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -181,7 +184,7 @@ class _RequestResetPasswordBottomsheetState
               ),
             ),
 
-            // School code input field
+            // NISN input field
             SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(0, 0.2),
@@ -198,35 +201,8 @@ class _RequestResetPasswordBottomsheetState
                   ),
                 ),
                 child: _buildInputField(
-                  icon: Icons.school_rounded,
-                  hintText: Utils.getTranslatedLabel(schoolCodeKey),
-                  controller: _schoolCodeTextEditingController,
-                  focusNode: _schoolCodeFocusNode,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // GR number input field
-            SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.2),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: _animationController,
-                curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic),
-              )),
-              child: FadeTransition(
-                opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: _animationController,
-                    curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
-                  ),
-                ),
-                child: _buildInputField(
                   icon: Icons.person_rounded,
-                  hintText: Utils.getTranslatedLabel(grNumberKey),
+                  hintText: "Masukkan NISN Anda",
                   controller: _grNumberTextEditingController,
                   focusNode: _grNumberFocusNode,
                 ),
@@ -242,22 +218,22 @@ class _RequestResetPasswordBottomsheetState
                 end: Offset.zero,
               ).animate(CurvedAnimation(
                 parent: _animationController,
-                curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+                curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic),
               )),
               child: FadeTransition(
                 opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
                   CurvedAnimation(
                     parent: _animationController,
-                    curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+                    curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
                   ),
                 ),
                 child: _buildDateSelector(),
               ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
-            // Submit button
+            // Submit button (Reset Link)
             SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(0, 0.2),
@@ -302,7 +278,85 @@ class _RequestResetPasswordBottomsheetState
               ),
             ),
 
+            const SizedBox(height: 24),
+
+            // Divider
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    "ATAU",
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Masuk dengan OTP Title
+            Text(
+              "Masuk dengan OTP",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Phone input field for OTP
+            _buildInputField(
+              icon: Icons.phone_android_rounded,
+              hintText: "Masukkan Nomor HP terdaftar",
+              controller: _otpIdentifierController,
+              focusNode: _otpIdentifierFocusNode,
+              keyboardType: TextInputType.phone,
+            ),
+
             const SizedBox(height: 20),
+
+            BlocConsumer<SignInCubit, SignInState>(
+              listener: (context, state) {
+                if (state is OtpRequestSuccess) {
+                  Get.back(); // close bottom sheet
+                  Get.toNamed(
+                    Routes.otpVerification,
+                    arguments: {"identifier": _otpIdentifierController.text.trim()},
+                  );
+                } else if (state is OtpRequestFailure) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: state.errorMessage,
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                } else if (state is OtpRequestFailure444) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: "Nomor HP belum terdaftar",
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                } else if (state is OtpRequestFailure429) {
+                  Utils.showCustomSnackBar(
+                    context: context,
+                    errorMessage: "Terlalu banyak permintaan OTP. Silakan tunggu beberapa saat.",
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  );
+                }
+              },
+              builder: (context, state) {
+                return _buildOtpButton(context, state);
+              },
+            ),
+
+            const SizedBox(height: 24),
 
             // Back button
             SlideTransition(
@@ -366,7 +420,7 @@ class _RequestResetPasswordBottomsheetState
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isFocused ? _primaryRed : Colors.grey[300] ?? Colors.grey,
+          color: isFocused ? _primaryRed : Colors.grey[300]!,
           width: isFocused ? 2.0 : 1.0,
         ),
         boxShadow: isFocused
@@ -469,7 +523,7 @@ class _RequestResetPasswordBottomsheetState
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? _primaryRed : Colors.grey[300] ?? Colors.grey,
+            color: isSelected ? _primaryRed : Colors.grey[300]!,
             width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: isSelected
@@ -529,21 +583,10 @@ class _RequestResetPasswordBottomsheetState
           : () {
               FocusScope.of(context).unfocus();
 
-              if (_schoolCodeTextEditingController.text.trim().isEmpty) {
-                Utils.showCustomSnackBar(
-                  context: context,
-                  errorMessage:
-                      Utils.getTranslatedLabel("pleaseEnterSchoolCode"),
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                );
-                _schoolCodeFocusNode.requestFocus();
-                return;
-              }
-
               if (_grNumberTextEditingController.text.trim().isEmpty) {
                 Utils.showCustomSnackBar(
                   context: context,
-                  errorMessage: Utils.getTranslatedLabel(enterGrNumberKey),
+                  errorMessage: "Silakan masukkan NISN Anda",
                   backgroundColor: Theme.of(context).colorScheme.error,
                 );
                 _grNumberFocusNode.requestFocus();
@@ -564,7 +607,7 @@ class _RequestResetPasswordBottomsheetState
 
               context.read<RequestResetPasswordCubit>().requestResetPassword(
                     grNumber: _grNumberTextEditingController.text.trim(),
-                    schoolCode: _schoolCodeTextEditingController.text.trim(),
+                    schoolCode: defaultSchoolCode,
                     dob: dateOfBirth!,
                   );
             },
@@ -591,9 +634,9 @@ class _RequestResetPasswordBottomsheetState
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  Utils.getTranslatedLabel(submitKey),
-                  style: const TextStyle(
+                const Text(
+                  "Kirim Permintaan Reset",
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
@@ -603,6 +646,73 @@ class _RequestResetPasswordBottomsheetState
                 const Icon(
                   Icons.send_rounded,
                   size: 20,
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildOtpButton(BuildContext context, SignInState state) {
+    final isLoading = state is OtpRequestInProgress;
+
+    return ElevatedButton(
+      onPressed: isLoading
+          ? null
+          : () {
+              FocusScope.of(context).unfocus();
+
+              final identifier = _otpIdentifierController.text.trim();
+              if (identifier.isEmpty) {
+                Utils.showCustomSnackBar(
+                  context: context,
+                  errorMessage: "Silakan masukkan Nomor HP Anda terlebih dahulu",
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                );
+                _otpIdentifierFocusNode.requestFocus();
+                return;
+              }
+
+              HapticFeedback.mediumImpact();
+
+              context.read<SignInCubit>().requestOtp(identifier: identifier);
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: _primaryRed,
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(50),
+          side: BorderSide(color: _primaryRed, width: 2),
+        ),
+        elevation: 0,
+        minimumSize: const Size(200, 55),
+      ),
+      child: isLoading
+          ? SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryRed),
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Kirim Kode OTP",
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryRed,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: _primaryRed,
                 ),
               ],
             ),

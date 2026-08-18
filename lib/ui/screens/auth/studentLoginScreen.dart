@@ -69,13 +69,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
       TextEditingController(
           text: showDefaultCredentials ? defaultStudentPassword : null);
 
-  final TextEditingController _schoolCodeController = TextEditingController(
-    text: showDefaultCredentials ? defaultSchoolCode : null,
-  );
-
   // ─── State ───────────────────────────────────────────────────────────────
   bool _hidePassword = true;
-  bool _isSchoolCodeFocused = false;
   bool _isUsernameFocused = false;
   bool _isPasswordFocused = false;
   bool _rememberMe = false;
@@ -83,7 +78,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
   late final AuthRepository _authRepository;
 
   // ─── Focus nodes ─────────────────────────────────────────────────────────
-  late final FocusNode _schoolCodeFocusNode = FocusNode();
   late final FocusNode _usernameFocusNode = FocusNode();
   late final FocusNode _passwordFocusNode = FocusNode();
 
@@ -108,7 +102,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
     if (rememberMe) {
       setState(() {
         _rememberMe = true;
-        _schoolCodeController.text = _authRepository.getSavedSchoolCode();
         _grNumberTextEditingController.text =
             _authRepository.getSavedGrNumber();
         _passwordTextEditingController.text =
@@ -252,9 +245,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
   }
 
   void _setupFocusListeners() {
-    _schoolCodeFocusNode.addListener(() {
-      setState(() => _isSchoolCodeFocused = _schoolCodeFocusNode.hasFocus);
-    });
     _usernameFocusNode.addListener(() {
       setState(() => _isUsernameFocused = _usernameFocusNode.hasFocus);
     });
@@ -272,8 +262,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
     _pulseAnimationController.dispose();
     _grNumberTextEditingController.dispose();
     _passwordTextEditingController.dispose();
-    _schoolCodeController.dispose();
-    _schoolCodeFocusNode.dispose();
     _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
@@ -282,21 +270,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
   // ─── Business logic ───────────────────────────────────────────────────────
 
   void _signInStudent() {
-    if (_schoolCodeController.text.trim().isEmpty) {
-      Utils.showCustomSnackBar(
-        context: context,
-        errorMessage: Utils.getTranslatedLabel(
-          Utils.getTranslatedLabel("pleaseEnterSchoolCode"),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      );
-      return;
-    }
-
     if (_grNumberTextEditingController.text.trim().isEmpty) {
       Utils.showCustomSnackBar(
         context: context,
-        errorMessage: Utils.getTranslatedLabel(pleaseEnterGRNumberKey),
+        errorMessage: "Silakan masukkan NISN Anda",
         backgroundColor: Theme.of(context).colorScheme.error,
       );
       return;
@@ -313,7 +290,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
 
     if (_rememberMe) {
       _authRepository.setRememberMeStudent(true);
-      _authRepository.setSavedSchoolCode(_schoolCodeController.text.trim());
+      _authRepository.setSavedSchoolCode(defaultSchoolCode);
       _authRepository
           .setSavedGrNumber(_grNumberTextEditingController.text.trim());
       _authRepository
@@ -325,7 +302,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
     context.read<SignInCubit>().signInUser(
           userId: _grNumberTextEditingController.text.trim(),
           password: _passwordTextEditingController.text.trim(),
-          schoolCode: _schoolCodeController.text.trim(),
+          schoolCode: defaultSchoolCode,
           isStudentLogin: true,
         );
   }
@@ -338,8 +315,15 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
       useRootNavigator: true,
       isDismissible: true,
       builder: (context) => Container(
-        child: BlocProvider(
-          create: (_) => RequestResetPasswordCubit(AuthRepository()),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => RequestResetPasswordCubit(AuthRepository()),
+            ),
+            BlocProvider(
+              create: (_) => SignInCubit(AuthRepository()),
+            ),
+          ],
           child: const RequestResetPasswordBottomsheet(),
         ),
       ),
@@ -347,7 +331,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
       if (value != null && !value['error']) {
         Utils.showCustomSnackBar(
           context: context,
-          errorMessage: "${Utils.getTranslatedLabel(passwordUpdateLinkSentKey)}",
+          errorMessage: "Permintaan atur ulang kata sandi berhasil dikirim. Silakan hubungi Admin Sekolah untuk mendapatkan kata sandi baru Anda.",
           backgroundColor: Theme.of(context).colorScheme.onPrimary,
         );
       }
@@ -562,20 +546,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
         ),
         const SizedBox(height: 28),
         LoginTextField(
-          controller: _schoolCodeController,
-          hintText: Utils.getTranslatedLabel(schoolCodeKey),
-          labelText: Utils.getTranslatedLabel("schoolCode"),
-          obscureText: false,
-          icon: Icons.business_rounded,
-          slideAnimation: _schoolCodeSlideAnimation,
-          isFocused: _isSchoolCodeFocused,
-          focusNode: _schoolCodeFocusNode,
-          primaryColor: _primaryRed,
-        ),
-        LoginTextField(
           controller: _grNumberTextEditingController,
-          hintText: Utils.getTranslatedLabel(grNumberKey),
-          labelText: Utils.getTranslatedLabel(grNumberKey),
+          hintText: "Masukkan NISN Anda",
+          labelText: "NISN (Nomor Induk Siswa Nasional)",
           obscureText: false,
           icon: Icons.person_outline_rounded,
           slideAnimation: _usernameSlideAnimation,

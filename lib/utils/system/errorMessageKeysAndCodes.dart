@@ -135,6 +135,17 @@ class ErrorMessageMapper {
   static String getUserFriendlyMessage(Object error) {
     final errorStr = error.toString().toLowerCase();
 
+    // Penugasan / Pengumpulan ulang
+    if (errorStr.contains('already submitted') ||
+        errorStr.contains('already submitted assignment') ||
+        errorStr.contains('resubmission') ||
+        errorStr.contains('re-submission') ||
+        errorStr.contains('cannot submit') ||
+        errorStr.contains('resubmit') ||
+        errorStr.contains('limit reached')) {
+      return 'Tugas sudah dikumpulkan dan tidak dapat dikirim ulang (batas pengumpulan ulang habis).';
+    }
+
     // Network/Connection errors
     if (errorStr.contains('connection') ||
         errorStr.contains('network') ||

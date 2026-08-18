@@ -257,7 +257,7 @@ class _ParentLoginScreenState extends State<ParentLoginScreen>
     if (_emailTextEditingController.text.trim().isEmpty) {
       Utils.showCustomSnackBar(
         context: context,
-        errorMessage: Utils.getTranslatedLabel(pleaseEnterEmailKey),
+        errorMessage: "Silakan masukkan Email atau Nomor HP Anda",
         backgroundColor: Theme.of(context).colorScheme.error,
       );
       return;
@@ -296,8 +296,15 @@ class _ParentLoginScreenState extends State<ParentLoginScreen>
       useRootNavigator: true,
       isDismissible: true,
       builder: (context) => Container(
-        child: BlocProvider(
-          create: (_) => ForgotPasswordRequestCubit(AuthRepository()),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => ForgotPasswordRequestCubit(AuthRepository()),
+            ),
+            BlocProvider(
+              create: (_) => SignInCubit(AuthRepository()),
+            ),
+          ],
           child: const ForgotPasswordRequestBottomsheet(),
         ),
       ),
@@ -528,8 +535,8 @@ class _ParentLoginScreenState extends State<ParentLoginScreen>
         const SizedBox(height: 28),
         LoginTextField(
           controller: _emailTextEditingController,
-          hintText: Utils.getTranslatedLabel(emailKey),
-          labelText: Utils.getTranslatedLabel(emailKey),
+          hintText: "Contoh: email@sekolah.com / 0812345678",
+          labelText: "Email / Nomor HP",
           obscureText: false,
           icon: FontAwesomeIcons.envelope,
           slideAnimation: _emailSlideAnimation,
