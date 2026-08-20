@@ -20,6 +20,9 @@ import 'package:get/get.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:eschool/utils/system/appLanguages.dart';
+import 'package:eschool/cubits/auth/authCubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 ///[V.1.4.1]
 ///
@@ -256,7 +259,8 @@ Future<void> setupFCM() async {
       },
     );
 
-    // contoh: kalau perlu update state lokal berdasarkan type/id, lakukan di sini
+    // Contoh: kalau perlu update state lokal berdasarkan type/id, lakukan di sini
+
   });
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     _handleNotificationClick(message);
@@ -273,7 +277,10 @@ void _handleNotificationClick(RemoteMessage message) {
   logRemoteMessageAndroid(message, tag: 'FCM-CLICK');
 
   final type = (message.data['type'] ?? '').toString();
+  final normalizedType = type.trim().toLowerCase().replaceAll('-', '_');
   final route = mapPushRoute(type, payload: message.data);
+
+
 
   // ✅ Tunggu sampai GetMaterialApp dan routes benar-benar siap
   WidgetsBinding.instance.addPostFrameCallback((_) {

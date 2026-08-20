@@ -18,80 +18,18 @@ class SplashScreen extends StatefulWidget {
   }
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  double _opacity = 0.0;
-
-  bool _entranceDone = false;
-  double _entranceProgress = 0.0; // 0..1 for entrance
-
-  static const double _entranceDurationSec = 0.6;
+class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void initState() {
     super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
-
-    _controller.addListener(_onTick);
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) {
-        _controller.repeat();
-      }
-    });
 
     Future.delayed(Duration.zero, () {
       context.read<AppConfigurationCubit>().fetchAppConfiguration();
     });
   }
 
-  DateTime? _lastTick;
-
-  void _onTick() {
-    final now = DateTime.now();
-    if (_lastTick == null) {
-      _lastTick = now;
-      return;
-    }
-
-    final dt = (now.difference(_lastTick!).inMicroseconds / 1000000.0)
-        .clamp(0.0, 0.05);
-    _lastTick = now;
-
-    if (!_entranceDone) {
-      _entranceProgress += dt / _entranceDurationSec;
-      if (_entranceProgress >= 1.0) {
-        _entranceProgress = 1.0;
-        _entranceDone = true;
-      }
-
-      _opacity = _easeOutQuad(_entranceProgress);
-    } else {
-      _opacity = 1.0;
-    }
-
-    setState(() {});
-  }
-
-  double _easeOutQuad(double t) {
-    return 1.0 - (1.0 - t) * (1.0 - t);
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_onTick);
-    _controller.dispose();
-    super.dispose();
-  }
-
   void navigateToNextScreen() {
-    _controller.stop();
 
     if (context.read<AuthCubit>().state is Unauthenticated) {
       Get.offNamed(Routes.auth);
@@ -128,12 +66,9 @@ class _SplashScreenState extends State<SplashScreen>
           return Container(
             color: Colors.white,
             child: Center(
-              child: Opacity(
-                opacity: _opacity,
-                child: Image.asset(
-                  Utils.getImagePath("rizkyScreen.jpg"),
-                  width: MediaQuery.of(context).size.width * 0.55,
-                ),
+              child: Image.asset(
+                Utils.getImagePath("rizkyScreen.jpg"),
+                width: MediaQuery.of(context).size.width * 0.55,
               ),
             ),
           );

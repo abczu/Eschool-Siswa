@@ -3,14 +3,13 @@ import 'package:eschool/data/models/system/gallery.dart';
 import 'package:eschool/data/models/academic/sessionYear.dart';
 import 'package:eschool/app/routes.dart';
 import 'package:eschool/data/models/academic/studyMaterial.dart';
-import 'package:eschool/ui/screens/system/playVideo/widgets/playPauseButton.dart';
-import 'package:eschool/ui/screens/system/playVideo/widgets/videoControlsContainer.dart';
+
 import 'package:eschool/ui/widgets/system/customBackButton.dart';
 import 'package:eschool/ui/widgets/system/customCircularProgressIndicator.dart';
 import 'package:eschool/ui/widgets/system/screenTopBackgroundContainer.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/utils.dart';
-import 'package:eschool/ui/widgets/system/videoDoubleTapSkipOverlay.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
@@ -881,22 +880,8 @@ class GalleryYoutubePlayer extends StatefulWidget {
   State<GalleryYoutubePlayer> createState() => _GalleryYoutubePlayerState();
 }
 
-class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer>
-    with TickerProviderStateMixin {
+class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer> {
   late YoutubePlayerController _controller;
-
-  late AnimationController controlsMenuAnimationController =
-      AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 500),
-  );
-  late Animation<double> controlsMenuAnimation =
-      Tween<double>(begin: 0.0, end: 1.0).animate(
-    CurvedAnimation(
-      parent: controlsMenuAnimationController,
-      curve: Curves.easeInOut,
-    ),
-  );
 
   @override
   void initState() {
@@ -906,16 +891,17 @@ class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer>
       flags: const YoutubePlayerFlags(
         autoPlay: false,
         mute: false,
-        hideControls: true,
+        hideControls: false,
+        controlsVisibleAtStart: true,
+        forceHD: false,
+        enableCaption: true,
       ),
     );
-    controlsMenuAnimationController.forward();
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    controlsMenuAnimationController.dispose();
     super.dispose();
   }
 
@@ -924,115 +910,17 @@ class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            VideoDoubleTapSkipOverlay(
-              youtubePlayerController: _controller,
-              onTap: () {
-                if (controlsMenuAnimationController.isCompleted) {
-                  controlsMenuAnimationController.reverse();
-                } else {
-                  controlsMenuAnimationController.forward();
-                }
-              },
-              child: YoutubePlayer(
-                controller: _controller,
-                showVideoProgressIndicator: false,
-                onReady: () {
-                  // Siap digunakan
-                },
-              ),
-            ),
-            // Tombol Kontrol di atas Video
-            AnimatedBuilder(
-              animation: controlsMenuAnimationController,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: controlsMenuAnimation.value,
-                  child: IgnorePointer(
-                    ignoring: !controlsMenuAnimationController.isCompleted,
-                    child: child,
-                  ),
-                );
-              },
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Kontrol Pusat (Play/Pause/Skip) - Standar YouTube
-                  PlayPauseButtonContainer(
-                    isYoutubeVideo: true,
-                    youtubePlayerController: _controller,
-                    controlsAnimationController:
-                        controlsMenuAnimationController,
-                  ),
-                ],
-              ),
-            ),
-            // Garis Durasi (Slider) - Sekarang diletakkan di Stack utama agar benar-benar di bawah
-            AnimatedBuilder(
-              animation: controlsMenuAnimationController,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: controlsMenuAnimation.value,
-                  child: IgnorePointer(
-                    ignoring: !controlsMenuAnimationController.isCompleted,
-                    child: child,
-                  ),
-                );
-              },
-              child: Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: VideoControlsContainer(
-                  isGalleryVideo: true,
-                  isYoutubeVideo: true,
-                  youtubePlayerController: _controller,
-                  controlsAnimationController:
-                      controlsMenuAnimationController,
-                  onFullscreenPressed: () async {
-                    // Simpan posisi saat ini
-                    final currentPosition = _controller.value.position;
-
-                    // Hentikan video di galeri dulu
-                    _controller.pause();
-
-                    // Langsung putar layar ke landscape
-                    SystemChrome.setPreferredOrientations([
-                      DeviceOrientation.landscapeRight,
-                      DeviceOrientation.landscapeLeft,
-                    ]);
-
-                    // Buka pemutar video utama dengan data video ini dan tunggu hasilnya
-                    final result = await Get.toNamed(
-                      Routes.playVideo,
-                      arguments: {
-                        "currentlyPlayingVideo": StudyMaterial(
-                            id: 0,
-                            fileName: widget.youtubeId,
-                            fileThumbnail: YoutubePlayer.getThumbnail(
-                                videoId: widget.youtubeId),
-                            fileUrl:
-                                "https://www.youtube.com/watch?v=${widget.youtubeId}",
-                            fileExtension: "",
-                            studyMaterialType:
-                                StudyMaterialType.youtubeVideo),
-                        "relatedVideos": <StudyMaterial>[],
-                        "initialPosition": currentPosition,
-                      },
-                    );
-
-                    // Jika ada hasil (posisi terakhir dari fullscreen), sinkronkan kembali
-                    if (result != null && result is Duration) {
-                      _controller.seekTo(result);
-                      _controller.play(); // Langsung putar otomatis setelah kembali
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
+        YoutubePlayer(
+          controller: _controller,
+          showVideoProgressIndicator: true,
+          progressIndicatorColor: Colors.red,
+          progressColors: const ProgressBarColors(
+            playedColor: Colors.red,
+            handleColor: Colors.redAccent,
+          ),
+          onReady: () {
+            // Siap digunakan
+          },
         ),
       ],
     );

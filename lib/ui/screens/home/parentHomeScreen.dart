@@ -11,6 +11,7 @@ import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 
 class ParentHomeScreen extends StatefulWidget {
@@ -45,6 +46,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshData() async {
+    // Memanggil logika fetch API & cache buster yang baru kita buat
+    await context.read<AuthCubit>().refreshProfileImage();
+    
+    // Add a small delay for UI feedback (optional, tapi bagus buat pull-to-refresh)
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Widget _buildAppBar() {
@@ -361,7 +374,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
                                     arguments: student);
                               },
                               heightAndWidth: 60,
-                              imageUrl: student.childUserDetails?.image ?? "",
+                              imageUrl: student.image ?? student.childUserDetails?.image ?? "",
                             ),
                             const SizedBox(height: 15),
                             Text(
@@ -429,7 +442,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
 
   Widget _buildChildrenContainer() {
     final children =
-        context.read<AuthCubit>().getParentDetails().children ?? [];
+        context.read<AuthCubit>().getChildren();
 
     return Center(
       child: Container(
@@ -599,7 +612,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
   Widget build(BuildContext context) {
     // Set to first student if available
     final children =
-        context.read<AuthCubit>().getParentDetails().children ?? [];
+        context.read<AuthCubit>().getChildren();
     if (children.isNotEmpty) {
       context.read<AuthCubit>().switchToChildSession(children.first);
     }
@@ -612,21 +625,31 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               children: [
                 Align(
                   alignment: Alignment.topCenter,
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.only(
-                      bottom: 50,
-                      top: Utils.getScrollViewTopPadding(
-                        context: context,
-                        appBarHeightPercentage:
-                            Utils.appBarMediumtHeightPercentage,
-                      ),
+                  child: RefreshIndicator(
+                    onRefresh: _refreshData,
+                    color: Theme.of(context).colorScheme.primary,
+                    edgeOffset: Utils.getScrollViewTopPadding(
+                      context: context,
+                      appBarHeightPercentage:
+                          Utils.appBarMediumtHeightPercentage,
                     ),
-                    child: Column(
-                      children: [
-                        _buildWelcomeMessage(),
-                        const SizedBox(height: 15),
-                        _buildChildrenContainer(),
-                      ],
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        bottom: 50,
+                        top: Utils.getScrollViewTopPadding(
+                          context: context,
+                          appBarHeightPercentage:
+                              Utils.appBarMediumtHeightPercentage,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildWelcomeMessage(),
+                          const SizedBox(height: 15),
+                          _buildChildrenContainer(),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -330,7 +330,7 @@ class _GuardianProfileContainerState extends State<GuardianProfileContainer>
                       label,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white,
+                        color: Colors.grey.shade600,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -340,7 +340,7 @@ class _GuardianProfileContainerState extends State<GuardianProfileContainer>
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       overflow: isExpanded
                           ? TextOverflow.visible

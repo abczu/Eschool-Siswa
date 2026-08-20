@@ -37,6 +37,13 @@ class Guardian {
       this.fullName,
       this.children});
 
+  static String? _processImage(String? url, String? updatedAt) {
+    if (url == null || url.isEmpty) return url;
+    if (updatedAt == null || updatedAt.isEmpty) return url;
+    final sep = url.contains('?') ? '&' : '?';
+    return '$url${sep}v=${Uri.encodeComponent(updatedAt)}';
+  }
+
   Guardian copyWith(
       {int? id,
       String? firstName,
@@ -81,7 +88,7 @@ class Guardian {
         mobile = json['mobile'] as String?,
         email = json['email'] as String?,
         gender = json['gender'] as String?,
-        image = json['image'] as String?,
+        image = _processImage(json['image'] as String?, json['updated_at'] as String?),
         dob = json['dob'] as String?,
         currentAddress = json['current_address'] as String?,
         permanentAddress = json['permanent_address'] as String?,

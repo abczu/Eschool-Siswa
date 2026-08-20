@@ -63,6 +63,13 @@ class Student {
     this.childUserDetails,
   }); // Add token to constructor
 
+  static String? _processImage(String? url, String? updatedAt) {
+    if (url == null || url.isEmpty) return url;
+    if (updatedAt == null || updatedAt.isEmpty) return url;
+    final sep = url.contains('?') ? '&' : '?';
+    return '$url${sep}v=${Uri.encodeComponent(updatedAt)}';
+  }
+
   Student copyWith(
       {int? id,
       String? firstName,
@@ -131,7 +138,7 @@ class Student {
         lastName = (json['last_name'] ?? json['user']?['last_name']) as String?,
         mobile = (json['mobile'] ?? json['user']?['mobile']) as String?,
         gender = (json['gender'] ?? json['user']?['gender']) as String?,
-        image = (json['image'] ?? json['user']?['image']) as String?,
+        image = _processImage((json['image'] ?? json['user']?['image']) as String?, (json['updated_at'] ?? json['user']?['updated_at']) as String?),
         // Extract schoolCode from multiple possible sources in priority order
         schoolCode = json['school_code'] as String? ??
             json['user']?['school']?['code'] as String? ??

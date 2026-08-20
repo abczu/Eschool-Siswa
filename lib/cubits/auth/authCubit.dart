@@ -3,7 +3,9 @@ import 'package:equatable/equatable.dart';
 import 'package:eschool/data/models/auth/guardian.dart';
 import 'package:eschool/data/models/auth/student.dart';
 import 'package:eschool/data/repositories/auth/authRepository.dart';
+import 'package:eschool/data/repositories/student/studentRepository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 abstract class AuthState extends Equatable {}
 
@@ -59,6 +61,34 @@ class AuthCubit extends Cubit<AuthState> {
     if (authRepository.getIsLogIn()) {
       // Load children data from persistence storage
       final storedChildren = AuthRepository.getChildrenData();
+
+      // --- Evict profile images from cache to ensure fresh image on app startup ---
+      try {
+        final isStudent = AuthRepository.getIsStudentLogIn();
+        if (isStudent) {
+          final student = AuthRepository.getStudentDetails();
+          if (student.image != null && student.image!.isNotEmpty) {
+            DefaultCacheManager().removeFile(student.image!);
+          }
+        } else {
+          final parent = AuthRepository.getParentDetails();
+          if (parent.image != null && parent.image!.isNotEmpty) {
+            DefaultCacheManager().removeFile(parent.image!);
+          }
+          for (var child in storedChildren) {
+            if (child.image != null && child.image!.isNotEmpty) {
+              DefaultCacheManager().removeFile(child.image!);
+            }
+            if (child.childUserDetails?.image != null && child.childUserDetails!.image!.isNotEmpty) {
+              DefaultCacheManager().removeFile(child.childUserDetails!.image!);
+            }
+          }
+        }
+      } catch (e) {
+         debugPrint("Error evicting cache: $e");
+      }
+      // ----------------------------------------------------------------------
+
     debugPrint("DEBUG: storedChildren count = ${storedChildren.length}");
 
       // For parent login, get the current active child's token and school code
@@ -325,13 +355,104 @@ class AuthCubit extends Cubit<AuthState> {
     ));
   }
 
+  /// Refresh semua profile image dari cache (dipanggil saat terima notif profile_updated)
+  Future<void> refreshProfileImage() async {
+    if (state is! Authenticated) return;
+    final s = state as Authenticated;
+
+    // Coba ambil data terbaru dari server agar URL gambar yang baru didapat
+    Student updatedStudent = s.student;
+    Guardian updatedParent = s.parent;
+    List<Student> updatedChildren = s.children;
+
+    debugPrint("🔍 [REFRESH PROFILE] Awal - Parent Image: '${s.parent.image}'");
+
+    try {
+      if (s.isStudent) {
+        final freshStudent = await StudentRepository().fetchStudentFullProfileDetails(useParentApi: false);
+        updatedStudent = freshStudent;
+      } else {
+        // Fetch all children in parallel to save time
+        final futures = s.children.map((child) async {
+          try {
+            final freshChild = await StudentRepository().fetchStudentFullProfileDetails(useParentApi: true, childId: child.id);
+            
+            final mergedChild = freshChild.copyWith(
+              schoolName: freshChild.schoolName ?? child.schoolName,
+              schoolCode: freshChild.schoolCode ?? child.schoolCode,
+              token: freshChild.token ?? child.token,
+              childUserDetails: (freshChild.childUserDetails?.id == null && child.childUserDetails != null)
+                  ? child.childUserDetails!.copyWith(image: freshChild.image ?? child.childUserDetails!.image)
+                  : freshChild.childUserDetails?.copyWith(image: freshChild.childUserDetails?.image ?? freshChild.image) ?? child.childUserDetails,
+              guardian: freshChild.guardian?.id == null ? child.guardian : freshChild.guardian,
+              school: freshChild.school?.id == null ? child.school : freshChild.school,
+            );
+            return mergedChild;
+          } catch (e) {
+            debugPrint("Failed to fetch profile for child ${child.id}: $e");
+            return child; // Fallback to existing data if fetch fails
+          }
+        });
+
+        final freshChildrenList = await Future.wait(futures);
+        updatedChildren = freshChildrenList.toList();
+        
+        // Find if parent image needs update from any of the merged children
+        for (var mergedChild in updatedChildren) {
+          if (mergedChild.guardian != null && mergedChild.guardian!.id == s.parent.id) {
+            if (mergedChild.guardian!.image != null && mergedChild.guardian!.image!.isNotEmpty) {
+              updatedParent = updatedParent.copyWith(
+                image: mergedChild.guardian!.image,
+              );
+              break;
+            }
+          }
+        }
+
+        // Update selected student if it exists
+        updatedStudent = updatedChildren.firstWhere((c) => c.id == s.student.id, orElse: () => s.student);
+      }
+    } catch (e) {
+      debugPrint("⚠️ Gagal mengambil data profil terbaru dari server, menggunakan fallback data lama: $e");
+    }
+
+    updatedParent = updatedParent.copyWith(
+      children: updatedChildren,
+    );
+
+    debugPrint("🔍 [REFRESH PROFILE] Akhir - Parent Image: '${updatedParent.image}'");
+
+    // Simpan ke persistence
+    if (s.isStudent) {
+      authRepository.setStudentDetails(updatedStudent);
+    } else {
+      authRepository.setParentDetails(updatedParent);
+      authRepository.setChildrenData(updatedChildren);
+    }
+
+    emit(Authenticated(
+      jwtToken: s.jwtToken,
+      isStudent: s.isStudent,
+      student: updatedStudent,
+      parent: updatedParent,
+      schoolCode: s.schoolCode,
+      children: updatedChildren,
+    ));
+    debugPrint("✅ Profile image refreshed via FCM notification");
+  }
+
   /// Khusus update foto (cache-buster biar tidak ketahan cache lama)
   void updateParentImage(String newUrl) {
     if (state is! Authenticated) return;
     final s = state as Authenticated;
 
-    final sep = newUrl.contains('?') ? '&' : '?';
-    final busted = '$newUrl${sep}v=${DateTime.now().millisecondsSinceEpoch}';
+    String busted = newUrl;
+    try {
+      final uri = Uri.parse(newUrl);
+      final queryParams = Map<String, dynamic>.from(uri.queryParameters);
+      queryParams['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+      busted = uri.replace(queryParameters: queryParams).toString();
+    } catch (_) {}
 
     final merged = s.parent.copyWith(image: busted);
 
