@@ -9,9 +9,8 @@ class AppConfig {
 
   // === Daftar URL per environment ===
   static const String devUrl = "https://devapisekolah.eschool.ac.id";
-  static const String prodUrl = "https://eschool.ac.id";
-  static const String testingUrl =
-      "https://devapisekolah.eschool.ac.id"; // Belum ada, pakai DEV sementara
+  static const String prodUrl = "https://apisekolah.eschool.ac.id";
+  static const String testingUrl = "https://testapisekolah.eschool.ac.id";
 
   // State aktif environment
   static Environment _currentEnv = Environment.prod;

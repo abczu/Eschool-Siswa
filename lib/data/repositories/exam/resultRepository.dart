@@ -88,19 +88,42 @@ class ResultRepository {
     }
   }
 
-  Future<String> downloadResult(
-      {required int examId, required int studentId}) async {
+  Future<String> downloadResult({
+    required int examId,
+    required int studentId,
+    required bool useParentApi,
+  }) async {
     try {
-      final result = await Api.get(
-          url: Api.downloadStudentResult,
-          useAuthToken: true,
-          queryParameters: {"exam_id": examId, "student_id": studentId});
+      final url = useParentApi
+          ? Api.parentDownloadStudentResult
+          : Api.studentDownloadStudentResult;
+      final params = {
+        "exam_id": examId,
+        "student_id": studentId,
+        "child_id": studentId,
+      };
 
-      final bytes = await Api.fetchDocumentBytes(result['data']);
-      return base64Encode(bytes); // Tetap kembalikan String biar tidak break UI, tapi proses downloadnya sudah benar.
+      debugPrint("🔍 [ResultRepository] Requesting PDF from: $url with params: $params (useParentApi: $useParentApi)");
+
+      final result = await Api.get(
+        url: url,
+        useAuthToken: true,
+        queryParameters: params,
+      );
+
+      debugPrint("✅ [ResultRepository] API Response: $result");
+
+      final data = result['data'];
+      if (data != null && data is Map<String, dynamic>) {
+        final bytes = await Api.fetchDocumentBytes(data);
+        return base64Encode(bytes);
+      } else {
+        throw ApiException("Format data respons dari server tidak valid.");
+      }
     } catch (e) {
-      if (kDebugMode) {
-        print(e.toString());
+      debugPrint("❌ [ResultRepository] Error in downloadResult: $e");
+      if (e is ApiException) {
+        rethrow;
       }
       throw ApiException(e.toString());
     }

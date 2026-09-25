@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+  <g id="violation_icon" transform="translate(-0.5 -0.5)">
+    <!-- Perisai luar -->
+    <path id="shield" d="M15.5,2.5,26,6.8V15c0,7.3-4.9,11.7-10.5,13C9.9,26.7,5,22.3,5,15V6.8L15.5,2.5Z" fill="#c62828"/>
+    <!-- Perisai dalam (highlight) -->
+    <path id="shield-inner" d="M15.5,5.6,23.4,8.7V15c0,5.7-3.8,9.1-7.9,10.2-4.1-1.1-7.9-4.5-7.9-10.2V8.7L15.5,5.6Z" fill="#e57373"/>
+    <!-- Tanda seru -->
+    <rect id="mark-bar" x="14.05" y="10.2" width="2.9" height="7.2" rx="1.45" fill="#fff"/>
+    <circle id="mark-dot" cx="15.5" cy="20.4" r="1.75" fill="#fff"/>
+  </g>
+</svg>

@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
-class MoreMenuBottomsheetContainer extends StatelessWidget {
+class MoreMenuBottomsheetContainer extends StatefulWidget {
   final Function onTapMoreMenuItemContainer;
   final Function closeBottomMenu;
   const MoreMenuBottomsheetContainer({
@@ -17,6 +17,35 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
     required this.onTapMoreMenuItemContainer,
     required this.closeBottomMenu,
   }) : super(key: key);
+
+  @override
+  State<MoreMenuBottomsheetContainer> createState() =>
+      _MoreMenuBottomsheetContainerState();
+}
+
+class _MoreMenuBottomsheetContainerState
+    extends State<MoreMenuBottomsheetContainer> {
+  double _dragOffset = 0;
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (details.primaryDelta == null) return;
+    // Hanya ikuti tarikan ke bawah
+    final next = _dragOffset + details.primaryDelta!;
+    setState(() {
+      _dragOffset = next.clamp(0.0, 320.0);
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    // Tutup jika ditarik cukup jauh atau difling ke bawah dengan cepat
+    if (_dragOffset > 90 || velocity > 600) {
+      widget.closeBottomMenu();
+    }
+    setState(() {
+      _dragOffset = 0;
+    });
+  }
 
   Widget _buildMoreMenuContainer(
       {required BuildContext context,
@@ -27,23 +56,25 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
     // final Color darkRed = const Color(0xFFD32F2F);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
         onTap: () {
-          onTapMoreMenuItemContainer(
+          widget.onTapMoreMenuItemContainer(
             homeBottomSheetMenu
                 .indexWhere((element) => element.title == menu.title),
           );
         },
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               decoration: BoxDecoration(
                 border: Border.all(
                   color: primaryRed,
+                  width: 1.2,
                 ),
                 color: lightRed.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(15.0),
+                borderRadius: BorderRadius.circular(20.0),
               ),
               margin: EdgeInsets.symmetric(
                 horizontal: boxConstraints.maxWidth * (0.065),
@@ -53,19 +84,22 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
               padding: const EdgeInsets.all(12.5),
               child: SvgPicture.asset(menu.iconUrl),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             SizedBox(
               width: boxConstraints.maxWidth * (0.3),
+              height: 33,
               child: Text(
                 Utils.getTranslatedLabel(menu.title),
-                maxLines: 1,
+                maxLines: 2,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF000000),
-                  fontSize: 14.0,
+                  fontSize: 12.5,
                   wordSpacing: 0.0,
+                  height: 1.25,
                 ),
-                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                softWrap: true,
               ),
             )
           ],
@@ -82,11 +116,13 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
     final double navbarTotalHeight =
         80.0; // 64px (container) + 16px (margin bottom)
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+      transform: Matrix4.translationValues(0, _dragOffset, 0),
       constraints: BoxConstraints(
-        // maxHeight: MediaQuery.of(context).size.height * (0.7), // Dikurangi dari 0.95 ke 0.7
-        minHeight: MediaQuery.of(context).size.height *
-            (0.25), // Dikurangi dari 0.3 ke 0.25
+        maxHeight: MediaQuery.of(context).size.height * (0.85),
+        minHeight: MediaQuery.of(context).size.height * (0.25),
       ),
       padding: EdgeInsets.only(
         top: 15.0, // Dikurangi dari 20.0 ke 15.0
@@ -119,18 +155,28 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Area tarik: handle + profile (drag ke bawah untuk tutup)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragUpdate: _onDragUpdate,
+                  onVerticalDragEnd: _onDragEnd,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 // Drag indicator
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 4,
+                    width: 48,
+                    height: 5,
                     margin: const EdgeInsets.only(
-                        bottom: 15), // Dikurangi dari 20 ke 15
+                        top: 2,
+                        bottom: 15), // Area sentuh lebih besar
                     decoration: BoxDecoration(
                       color: Theme.of(context)
                           .colorScheme
                           .primary
-                          .withValues(alpha: 0.2),
+                          .withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
@@ -281,7 +327,7 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                         child: InkWell(
                           onTap: () async {
-                            closeBottomMenu();
+                            widget.closeBottomMenu();
                             Get.toNamed(Routes.studentProfile);
                           },
                           borderRadius: BorderRadius.circular(12),
@@ -303,11 +349,14 @@ class MoreMenuBottomsheetContainer extends StatelessWidget {
                   height: boxConstraints.maxWidth *
                       (0.04), // Dikurangi dari 0.05 ke 0.04
                 ),
+                    ],
+                  ),
+                ),
 
                 // Menu items dengan padding yang lebih kecil
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.start,
-                  runSpacing: 8, // Dikurangi dari 10 ke 8
+                  runSpacing: 10,
                   children: homeBottomSheetMenu
                       .map(
                         (e) => Utils.isModuleEnabled(

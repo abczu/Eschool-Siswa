@@ -5,6 +5,7 @@ import 'package:eschool/utils/system/hiveBoxKeys.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:eschool/data/local/pendingPaymentLocalDataSource.dart';
 import 'package:intl/intl.dart';
 
 class AuthRepository {
@@ -214,6 +215,14 @@ class AuthRepository {
     return Hive.box(authBoxKey).put(jwtTokenKey, value);
   }
 
+  String getParentJwtToken() {
+    return Hive.box(authBoxKey).get(parentJwtTokenKey) ?? "";
+  }
+
+  Future<void> setParentJwtToken(String value) async {
+    return Hive.box(authBoxKey).put(parentJwtTokenKey, value);
+  }
+
   String get schoolCode =>
       Hive.box(authBoxKey).get(schoolCodeKey, defaultValue: "") as String;
 
@@ -354,10 +363,12 @@ class AuthRepository {
     // ✅ 4. Clear local data (ini tetap dijalankan meskipun ada error di atas)
     await setIsLogIn(false);
     await setJwtToken("");
+    await setParentJwtToken("");
     await setStudentDetails(Student.fromJson({}));
     await setParentDetails(Guardian.fromJson({}));
     await setChildrenData([]); // Clear children data on logout
     schoolCode = ""; // Clear school code on logout
+    await PendingPaymentLocalDataSource.clear(); // Clear pending payments on logout
 
     // ✅ 5. Clear pending notification (jika ada)
     final authBox = Hive.box(authBoxKey);
@@ -413,10 +424,16 @@ class AuthRepository {
 
       // Token might be at the root of the response, or nested under data['user']
       final tokenResult = result['token'] ??
+          data['token'] ??
           (data['user'] != null ? data['user']['token'] : null);
+          
+      if (tokenResult == null || tokenResult.toString().isEmpty) {
+        debugPrint("ERROR: Backend did not return a token! Response: $result");
+        throw ApiException("Gagal masuk: Backend tidak mengirimkan token keamanan.");
+      }
 
       return {
-        "jwtToken": tokenResult ?? "",
+        "jwtToken": tokenResult,
         "schoolCode": finalSchoolCode,
         "student": student
       };
@@ -505,8 +522,17 @@ class AuthRepository {
       }).toList();
 
       final parent = Guardian.fromJson(Map.from(parentData));
+      
+      final parentToken = result['token']?.toString() ?? 
+                          parentData['token']?.toString() ?? 
+                          (parentData['user'] != null ? parentData['user']['token']?.toString() : null);
+
+      if (parentToken != null && parentToken.isNotEmpty) {
+        await setParentJwtToken(parentToken);
+      }
+
       final result_map = {
-        "jwtToken": children.isNotEmpty ? children.first.token ?? "" : "",
+        "jwtToken": parentToken ?? (children.isNotEmpty ? children.first.token ?? "" : ""),
         "schoolCode": children.isNotEmpty
             ? (children.first.schoolCode ?? children.first.school?.code ?? "")
             : "",
@@ -562,8 +588,10 @@ class AuthRepository {
       );
 
       final data = result['data'] as Map<String, dynamic>;
-      final tokenResult =
-          result['token'] ?? data['token'] ?? result['data']?['token'];
+      final tokenResult = result['token']?.toString() ?? 
+                          data['token']?.toString() ?? 
+                          result['data']?['token']?.toString() ??
+                          (data['user'] != null ? data['user']['token']?.toString() : null);
 
       // Check roles and user_type for user type (student/parent)
       final roles = (data['roles'] ?? data['user']?['roles']) as List? ?? [];
@@ -645,6 +673,9 @@ class AuthRepository {
 
         // Enforce parent to have the parsed children list in its model
         parent = rawParent.copyWith(children: children);
+        if (tokenResult != null && tokenResult.isNotEmpty) {
+          await setParentJwtToken(tokenResult);
+        }
       } else {
         final studentData = data['user'] as Map<String, dynamic>? ?? data;
         student = Student.fromJson(studentData);
@@ -694,7 +725,17 @@ class AuthRepository {
         "new_password": newPassword,
         "new_password_confirmation": newConfirmedPassword
       };
-      await Api.post(body: body, url: Api.changePassword, useAuthToken: true);
+      
+      final isStudent = getIsStudentLogIn();
+      final parentToken = getParentJwtToken();
+      final customToken = (!isStudent && parentToken.isNotEmpty) ? parentToken : null;
+
+      await Api.post(
+        body: body,
+        url: Api.changePassword,
+        useAuthToken: true,
+        customToken: customToken,
+      );
     } catch (e) {
       debugPrint("Bapak Mulyono, Raja Tipu Tipu");
       debugPrint("Mobil ESEMKA hanyalah salah satu");

@@ -61,6 +61,8 @@ import 'package:eschool/ui/screens/system/contactScreen.dart';
 import 'package:eschool/ui/screens/system/contactDetailScreen.dart';
 import 'package:eschool/ui/screens/system/submitContactScreen.dart';
 import 'package:eschool/ui/screens/extracurricular/extracurricularDetailsScreen.dart';
+import 'package:eschool/ui/screens/student/violationScreen.dart';
+import 'package:eschool/ui/screens/student/childViolationScreen.dart';
 import 'package:get/route_manager.dart';
 
 // ignore: avoid_classes_with_only_static_members
@@ -137,6 +139,11 @@ class Routes {
   // Fitur Baru Eschool versi 1.3.3 - Galang
   static const String childSubjectAttendance = "/childSubjectAttendance";
   static const String childLeaves = "/childLeaves";
+
+  // Modul Pelanggaran Siswa (Student Discipline & Violations)
+  static const String violations = "/violations";
+  // Sisi Orang Tua: Pelanggaran Anak
+  static const String childViolations = "/childViolations";
 
   // Contact/Support routes
   static const String contacts = "/contacts";
@@ -252,6 +259,14 @@ class Routes {
     GetPage(
       name: childLeaves,
       page: () => ChildLeavesScreen.routeInstance(Get.arguments),
+    ),
+    GetPage(
+      name: violations,
+      page: () => ViolationScreen.routeInstance(),
+    ),
+    GetPage(
+      name: childViolations,
+      page: () => ChildViolationScreen.routeInstance(),
     ),
     GetPage(
       name: '/payment-history',

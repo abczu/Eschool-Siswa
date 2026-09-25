@@ -543,12 +543,71 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                       }
                     },
                   ),
+                  if (studentDetails.nisn != null &&
+                      studentDetails.nisn!.trim().isNotEmpty)
+                    _buildProfileDetailsTile(
+                      label: "NISN",
+                      value: studentDetails.nisn!.trim(),
+                      iconColor: Theme.of(context).scaffoldBackgroundColor,
+                      iconUrl: Utils.getImagePath("nisn_icon.svg"),
+                      tapFunction: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: studentDetails.nisn!.trim()));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text('NISN berhasil disalin'),
+                              ],
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  if (studentDetails.nis != null &&
+                      studentDetails.nis!.trim().isNotEmpty)
+                    _buildProfileDetailsTile(
+                      label: "NIS",
+                      value: studentDetails.nis!.trim(),
+                      iconColor: Theme.of(context).scaffoldBackgroundColor,
+                      iconUrl: Utils.getImagePath("nis_icon.svg"),
+                      tapFunction: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: studentDetails.nis!.trim()));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text('NIS berhasil disalin'),
+                              ],
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
                   if ((studentDetails.studentProfileExtraDetails ?? [])
                       .isNotEmpty)
                     ...(studentDetails.studentProfileExtraDetails ?? []).map(
                       (details) {
-                        final label = Utils.getTranslatedLabel(
-                            details.formField?.name ?? "");
+                        final rawName = details.formField?.name?.trim() ?? "";
+                        final String translated = rawName.isNotEmpty
+                            ? Utils.getTranslatedLabel(rawName)
+                            : "";
+                        final String label = rawName.isEmpty
+                            ? "Informasi Tambahan"
+                            : (translated.isNotEmpty ? translated : rawName);
                         final value =
                             Utils.formatEmptyValue(details.data ?? "");
 

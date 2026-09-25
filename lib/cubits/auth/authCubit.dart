@@ -182,6 +182,9 @@ class AuthCubit extends Cubit<AuthState> {
     //
     authRepository.schoolCode = schoolCode;
     authRepository.setJwtToken(jwtToken);
+    if (!isStudent) {
+      authRepository.setParentJwtToken(jwtToken);
+    }
     authRepository.setIsLogIn(true);
     authRepository.setIsStudentLogIn(isStudent);
     authRepository.setStudentDetails(student);

@@ -46,7 +46,7 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
   bool _hasInitialized = false;
 
   String selectedTab = 'unpaid';
-  bool _isSortDescending = true;
+  String _sortOption = 'terbaru';
 
   String get paidTab => 'Sudah Dibayar';
   String get unpaidTab => 'Belum Dibayar';
@@ -200,14 +200,17 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
     return fees.where((fee) {
       final feeStatus = fee.getFeePaymentStatus();
       final remaining = fee.remainingFeeAmountToPay();
+      final total = fee.getTotalAmount();
       final hasPending = _hasPendingPayment(fee);
+      
       if (selectedTab == 'paid') {
-        return feeStatus == paidKey || remaining == 0;
+        return feeStatus == paidKey || (remaining == 0 && total > 0 && !hasPending);
       } else if (selectedTab == 'pending') {
         return hasPending;
       } else {
-        return (feeStatus == unpaidKey || remaining > 0) &&
-            !(feeStatus == paidKey || remaining == 0) &&
+        return (feeStatus == unpaidKey || feeStatus == partiallyPaidKey || remaining > 0) &&
+            feeStatus != paidKey &&
+            !(remaining == 0 && total > 0) &&
             !hasPending;
       }
     }).toList();
@@ -281,7 +284,14 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
     final bool isSelected = selectedTab == value;
     return GestureDetector(
       onTap: () {
-        setState(() => selectedTab = value);
+        setState(() {
+          selectedTab = value;
+          if (value == 'paid' && _sortOption == 'mendekati_tenggat') {
+            _sortOption = 'terbaru';
+          } else if (value != 'paid' && (_sortOption == 'terbesar' || _sortOption == 'terkecil')) {
+            _sortOption = 'terbaru';
+          }
+        });
         Navigator.pop(context);
       },
       child: Container(
@@ -402,6 +412,59 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
   Widget _buildFeesContainer({required List<ChildFeeDetails> fees}) {
     final filtered = _filterFees(fees);
 
+    // Apply sorting
+    filtered.sort((a, b) {
+      if (_sortOption == 'terbesar' || _sortOption == 'terkecil') {
+        double amtA = a.getTotalAmount();
+        double amtB = b.getTotalAmount();
+        int comparison = amtA.compareTo(amtB);
+        if (comparison == 0) comparison = (a.id ?? 0).compareTo(b.id ?? 0);
+        return _sortOption == 'terbesar' ? -comparison : comparison;
+      }
+
+      if (_sortOption == 'mendekati_tenggat') {
+        DateTime dueA = a.dueDate != null
+            ? DateTime.tryParse(a.dueDate!) ?? DateTime.fromMillisecondsSinceEpoch(0)
+            : DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime dueB = b.dueDate != null
+            ? DateTime.tryParse(b.dueDate!) ?? DateTime.fromMillisecondsSinceEpoch(0)
+            : DateTime.fromMillisecondsSinceEpoch(0);
+        int comparison = dueA.compareTo(dueB);
+        if (comparison == 0) {
+          comparison = (a.id ?? 0).compareTo(b.id ?? 0);
+        }
+        return comparison;
+      }
+
+      DateTime _getDate(ChildFeeDetails fee) {
+        if (selectedTab == 'paid') {
+          // Find the latest payment date if it's paid
+          if (fee.bills != null && fee.bills!.isNotEmpty && fee.bills!.first.paymentHistory.isNotEmpty) {
+            final history = fee.bills!.first.paymentHistory;
+            history.sort((p1, p2) {
+              DateTime d1 = p1.date != null ? DateTime.tryParse(p1.date!) ?? DateTime.fromMillisecondsSinceEpoch(0) : DateTime.fromMillisecondsSinceEpoch(0);
+              DateTime d2 = p2.date != null ? DateTime.tryParse(p2.date!) ?? DateTime.fromMillisecondsSinceEpoch(0) : DateTime.fromMillisecondsSinceEpoch(0);
+              return d1.compareTo(d2);
+            });
+            return history.last.date != null ? DateTime.tryParse(history.last.date!) ?? DateTime.fromMillisecondsSinceEpoch(0) : DateTime.fromMillisecondsSinceEpoch(0);
+          }
+        }
+        return fee.createdAt != null
+            ? DateTime.tryParse(fee.createdAt!) ?? DateTime.fromMillisecondsSinceEpoch(0)
+            : DateTime.fromMillisecondsSinceEpoch(0);
+      }
+
+      DateTime dateA = _getDate(a);
+      DateTime dateB = _getDate(b);
+
+      int comparison = dateA.compareTo(dateB);
+      if (comparison == 0) {
+        comparison = (a.id ?? 0).compareTo(b.id ?? 0);
+      }
+
+      return _sortOption == 'terbaru' ? -comparison : comparison;
+    });
+
     if (filtered.isEmpty) {
       return Scaffold(
         body: Stack(
@@ -449,7 +512,7 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
               return FeeOverviewBoard(
                 fees: filtered,
                 selectedTab: selectedTab,
-                isSortDescending: _isSortDescending,
+                isSortDescending: _sortOption == 'terbaru',
                 accentGreen: accentGreen,
               );
             }
@@ -639,21 +702,82 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
                                       .withValues(alpha: 0.4),
                                 ),
                               ),
-                              child: IconButton(
-                                icon: Transform.scale(
-                                  scaleY: _isSortDescending ? 1.0 : -1.0,
-                                  child: Icon(
-                                    Icons.filter_list_rounded,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
+                              child: PopupMenuButton<String>(
+                                offset: const Offset(0, 40),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                tooltip: _isSortDescending
-                                    ? 'Terbaru di atas'
-                                    : 'Terlama di atas',
-                                onPressed: () => setState(() =>
-                                    _isSortDescending = !_isSortDescending),
+                                icon: Icon(
+                                  Icons.filter_list_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                tooltip: 'Urutkan berdasarkan',
+                                onSelected: (String value) {
+                                  setState(() {
+                                    _sortOption = value;
+                                  });
+                                },
+                                itemBuilder: (BuildContext context) {
+                                  List<PopupMenuEntry<String>> items = [];
+                                  
+                                  // Common items
+                                  items.add(PopupMenuItem<String>(
+                                    value: 'terbaru',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.arrow_downward_rounded, size: 20, color: _sortOption == 'terbaru' ? Theme.of(context).colorScheme.primary : Colors.grey),
+                                        const SizedBox(width: 8),
+                                        Text(selectedTab == 'paid' ? 'Pembayaran Terbaru' : 'Terbaru', style: TextStyle(fontWeight: _sortOption == 'terbaru' ? FontWeight.bold : FontWeight.normal)),
+                                      ],
+                                    ),
+                                  ));
+                                  items.add(PopupMenuItem<String>(
+                                    value: 'terlama',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.arrow_upward_rounded, size: 20, color: _sortOption == 'terlama' ? Theme.of(context).colorScheme.primary : Colors.grey),
+                                        const SizedBox(width: 8),
+                                        Text(selectedTab == 'paid' ? 'Pembayaran Terlama' : 'Terlama', style: TextStyle(fontWeight: _sortOption == 'terlama' ? FontWeight.bold : FontWeight.normal)),
+                                      ],
+                                    ),
+                                  ));
+
+                                  if (selectedTab == 'paid') {
+                                    items.add(PopupMenuItem<String>(
+                                      value: 'terbesar',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.monetization_on_outlined, size: 20, color: _sortOption == 'terbesar' ? Theme.of(context).colorScheme.primary : Colors.grey),
+                                          const SizedBox(width: 8),
+                                          Text('Nominal Terbesar', style: TextStyle(fontWeight: _sortOption == 'terbesar' ? FontWeight.bold : FontWeight.normal)),
+                                        ],
+                                      ),
+                                    ));
+                                    items.add(PopupMenuItem<String>(
+                                      value: 'terkecil',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.money_off, size: 20, color: _sortOption == 'terkecil' ? Theme.of(context).colorScheme.primary : Colors.grey),
+                                          const SizedBox(width: 8),
+                                          Text('Nominal Terkecil', style: TextStyle(fontWeight: _sortOption == 'terkecil' ? FontWeight.bold : FontWeight.normal)),
+                                        ],
+                                      ),
+                                    ));
+                                  } else {
+                                    items.add(PopupMenuItem<String>(
+                                      value: 'mendekati_tenggat',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.access_time_rounded, size: 20, color: _sortOption == 'mendekati_tenggat' ? Theme.of(context).colorScheme.primary : Colors.grey),
+                                          const SizedBox(width: 8),
+                                          Text('Mendekati Tenggat', style: TextStyle(fontWeight: _sortOption == 'mendekati_tenggat' ? FontWeight.bold : FontWeight.normal)),
+                                        ],
+                                      ),
+                                    ));
+                                  }
+                                  
+                                  return items;
+                                },
                               ),
                             ),
                           ],
@@ -676,12 +800,14 @@ class _ChildFeesScreenState extends State<ChildFeesScreen>
                 builder: (context, state) {
                   if (state is ChildFeeDetailsFetchSuccess) {
                     final selectedFeesData = state.fees
-                        .where((fee) =>
-                            selectedFeeIds.contains(fee.id) &&
-                            (fee.getFeePaymentStatus() == unpaidKey ||
-                                fee.remainingFeeAmountToPay() > 0) &&
-                            !(fee.getFeePaymentStatus() == paidKey ||
-                                fee.remainingFeeAmountToPay() == 0))
+                        .where((fee) {
+                          if (!selectedFeeIds.contains(fee.id)) return false;
+                          final status = fee.getFeePaymentStatus();
+                          final remaining = fee.remainingFeeAmountToPay();
+                          final total = fee.getTotalAmount();
+                          final isPaid = status == paidKey || (remaining == 0 && total > 0);
+                          return !isPaid;
+                        })
                         .toList();
 
                     return FeeFloatingPaymentButton(

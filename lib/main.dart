@@ -363,6 +363,26 @@ Map<String, dynamic> _enhanceNotificationArguments(Map<String, dynamic> data) {
     // Jika parent, inject childId dari active child
     debugPrint('👨‍👩‍👧 User adalah parent, inject childId...');
 
+    // Pelanggaran siswa: payload membawa student_id spesifik anak terkait.
+    // Utamakan student_id payload agar orang tua dengan >1 anak
+    // diarahkan ke halaman anak yang benar.
+    final isViolationType = type == 'violation_warning' ||
+        type == 'violation_created' ||
+        type == 'student_violation';
+    if (isViolationType) {
+      final rawStudentId =
+          data['student_id'] ?? data['studentId'] ?? data['childId'];
+      final parsedId = rawStudentId is int
+          ? rawStudentId
+          : int.tryParse(rawStudentId?.toString() ?? '');
+      if (parsedId != null) {
+        enhanced['childId'] = parsedId;
+        enhanced['student_id'] = parsedId;
+        debugPrint('✅ Violation studentId dari payload: $parsedId');
+        return enhanced;
+      }
+    }
+
     // Ambil data children dari Hive
     final childrenData = authBox.get(childrenDataKey) ?? [];
     if (childrenData is List && childrenData.isNotEmpty) {
@@ -477,6 +497,12 @@ PushType mapPushType(String? rawType, {dynamic status}) {
     'student_promoted' => PushType.success,
     'student_transferred' => PushType.warning,
 
+    // Pelanggaran Siswa (Student Discipline & Violations)
+    'violation_warning' ||
+    'violation_created' ||
+    'student_violation' =>
+      PushType.warning,
+
     // Default
     _ => PushType.success,
   };
@@ -542,9 +568,27 @@ String? mapPushRoute(String? rawType, {dynamic payload}) {
     // Promote / Transfer
     'student_promoted' || 'student_transferred' => '/studentProfile',
 
+    // Pelanggaran Siswa - student ke /violations,
+    // parent ke /childViolations (butuh childId dari payload/Hive)
+    'violation_warning' ||
+    'violation_created' ||
+    'student_violation' =>
+      _violationRouteForCurrentRole(),
+
     // Default
     _ => null, // biarkan null kalau tidak ada mapping
   };
+}
+
+/// Route pelanggaran sesuai peran login saat ini:
+/// student -> `/violations`, parent/guest -> `/childViolations`.
+String _violationRouteForCurrentRole() {
+  try {
+    final authBox = Hive.box(authBoxKey);
+    final isStudent = authBox.get(isStudentLogInKey) ?? false;
+    if (isStudent) return '/violations';
+  } catch (_) {}
+  return '/childViolations';
 }
 
 // Fungsi untuk menampilkan dialog pengumuman

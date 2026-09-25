@@ -177,9 +177,6 @@ class _PaymentWebViewState extends State<PaymentWebView> {
     return Padding(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).size.height * 0.14, // Spacing for header
-        left: 16,
-        right: 16,
-        bottom: 16,
       ),
       child: Stack(
         children: [

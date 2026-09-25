@@ -32,9 +32,9 @@ const Duration errorMessageDisplayDuration = Duration(milliseconds: 3000);
 //Web socket ping interval
 const Duration socketPingInterval = Duration(seconds: 275);
 
-//home menu bottom sheet animation duration
+//home menu bottom sheet animation duration (cepat & smooth)
 const Duration homeMenuBottomSheetAnimationDuration =
-    Duration(milliseconds: 300);
+    Duration(milliseconds: 220);
 
 //Change slider duration
 const Duration changeSliderDuration = Duration(seconds: 5);

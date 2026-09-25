@@ -155,6 +155,11 @@ class XenditInvoiceCubit extends Cubit<XenditInvoiceState> {
         totalAmount: totalAmount,
       ));
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ [XenditInvoice] createInvoice ERROR: $e');
+        debugPrint('❌ [XenditInvoice] Error type: ${e.runtimeType}');
+        debugPrint('❌ [XenditInvoice] feeIds: $feeIds, amount: $amount, baseAmount: ${amount}, studentId: $studentId');
+      }
       emit(XenditInvoiceFailure(ErrorMessageMapper.getUserFriendlyMessage(e)));
     }
   }

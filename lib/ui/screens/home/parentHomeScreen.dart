@@ -610,12 +610,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Set to first student if available
-    final children =
-        context.read<AuthCubit>().getChildren();
-    if (children.isNotEmpty) {
-      context.read<AuthCubit>().switchToChildSession(children.first);
-    }
     return Scaffold(
       backgroundColor:
           Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),

@@ -58,6 +58,7 @@ class XenditRepository {
           'email': email,
           'description': description,
           'fee_ids': feeIds,
+          'locale': 'id', // Halaman pembayaran Xendit tampil dalam bahasa Indonesia
           if (paymentMethodId != null &&
               int.tryParse(paymentMethodId.toString()) != null)
             'payment_method_id': int.parse(paymentMethodId.toString()),

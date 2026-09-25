@@ -113,15 +113,19 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   Future<void> _startAnimationSequence() async {
     await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
     _backgroundAnimationController.forward();
 
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     _logoAnimationController.forward();
 
     await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
     _bottomMenuAnimationController.forward();
 
     await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
     _buttonAnimationController.forward();
   }
 

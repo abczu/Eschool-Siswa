@@ -343,5 +343,20 @@
   "inactiveAccount": "Your account is inactive. Contact school administrator for further information",
   "rememberMe": "مجھے یاد رکھیں",
   "exam_results_published_title": "امتحان کے نتائج شائع ہو گئے",
-  "exam_results_published_body": "'{exam_name}' کے نتائج شائع کر دیے گئے ہیں۔ ابھی اپنا نتیجہ دیکھیں!"
+  "exam_results_published_body": "'{exam_name}' کے نتائج شائع کر دیے گئے ہیں۔ ابھی اپنا نتیجہ دیکھیں!",
+  "violations": "خلاف ورزی پوائنٹس",
+  "violationHistory": "خلاف ورزی کی تاریخ",
+  "totalViolationPoints": "کل خلاف ورزی پوائنٹس",
+  "sanctionStatus": "پابندی کی حیثیت",
+  "noViolations": "ابھی تک کوئی خلاف ورزی کا ریکارڈ نہیں",
+  "noViolationsDesc": "اچھا رویہ برقرار رکھیں!",
+  "evidencePhoto": "ثبوت کی تصویر",
+  "tapToViewEvidence": "ثبوت دیکھنے کے لیے تھپتھپائیں",
+  "recordedBy": "ریکارڈ کردہ",
+  "violationPointsUnit": "پوائنٹس",
+  "violationRecords": "خلاف ورزی کے ریکارڈ",
+  "sanctionGuideTitle": "پابندی پوائنٹس رہنمائی",
+  "activeSanction": "فعال",
+  "downloadViolationReport": "خلاف ورزی رپورٹ ڈاؤن لوڈ کریں (PDF)",
+  "downloadingViolationReport": "خلاف ورزی رپورٹ ڈاؤن لوڈ ہو رہی ہے..."
 }

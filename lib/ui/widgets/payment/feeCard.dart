@@ -49,9 +49,9 @@ class FeeCard extends StatelessWidget {
     final isOverdue = feeDetails.isFeeOverDue();
 
     final isPaid =
-        feePaymentStatusKey == paidKey || remainingAmount == 0;
+        feePaymentStatusKey == paidKey || (remainingAmount == 0 && totalAmount > 0);
     final canSelect =
-        !isPaid && remainingAmount > 0 && !hasPendingPayment;
+        !isPaid && !hasPendingPayment;
 
     final feeName = feeDetails.name?.trim().isNotEmpty == true
         ? feeDetails.name!
@@ -246,22 +246,22 @@ class FeeCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.1),
+                              color: primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.info_outline_rounded,
+                                Icon(Icons.volunteer_activism_rounded,
                                     size: 16,
-                                    color: Colors.grey.shade600),
+                                    color: primaryColor),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    Utils.getTranslatedLabel(
-                                        amountInformationNotAvailableKey),
+                                    "Nominal Bebas (Sumbangan Sukarela)",
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.w600,
                                       fontStyle: FontStyle.italic,
                                     ),
                                     overflow: TextOverflow.ellipsis,

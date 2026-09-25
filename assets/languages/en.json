@@ -372,5 +372,20 @@
   "fileOf": "File",
   "rememberMe": "Remember Me",
   "exam_results_published_title": "Exam Results Published",
-  "exam_results_published_body": "Results for '{exam_name}' have been published. Check your results now!"
+  "exam_results_published_body": "Results for '{exam_name}' have been published. Check your results now!",
+  "violations": "Violation Points",
+  "violationHistory": "Violation History",
+  "totalViolationPoints": "Total Violation Points",
+  "sanctionStatus": "Sanction Status",
+  "noViolations": "No Violation Records Yet",
+  "noViolationsDesc": "Keep up the good behavior!",
+  "evidencePhoto": "Evidence Photo",
+  "tapToViewEvidence": "Tap to view evidence",
+  "recordedBy": "Recorded by",
+  "violationPointsUnit": "Points",
+  "violationRecords": "violation records",
+  "sanctionGuideTitle": "Sanction Points Guide",
+  "activeSanction": "Active",
+  "downloadViolationReport": "Download Violation Report (PDF)",
+  "downloadingViolationReport": "Downloading violation report..."
 }

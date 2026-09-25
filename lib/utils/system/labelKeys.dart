@@ -599,3 +599,21 @@ const String allFilesCompressedSuccessfullyKey =
 const String compressionFailedKey = "compressionFailed";
 const String compressingFilesKey = "compressingFiles";
 const String fileOfKey = "fileOf";
+
+// Modul Pelanggaran Siswa (Student Discipline & Violations)
+const String violationsKey = "violations";
+const String violationHistoryKey = "violationHistory";
+const String totalViolationPointsKey = "totalViolationPoints";
+const String sanctionStatusKey = "sanctionStatus";
+const String noViolationsKey = "noViolations";
+const String noViolationsDescKey = "noViolationsDesc";
+const String evidencePhotoKey = "evidencePhoto";
+const String tapToViewEvidenceKey = "tapToViewEvidence";
+const String recordedByKey = "recordedBy";
+const String violationPointsUnitKey = "violationPointsUnit";
+const String violationRecordsKey = "violationRecords";
+const String sanctionGuideTitleKey = "sanctionGuideTitle";
+const String activeSanctionKey = "activeSanction";
+// Sisi Orang Tua: unduh PDF laporan pelanggaran anak
+const String downloadViolationReportKey = "downloadViolationReport";
+const String downloadingViolationReportKey = "downloadingViolationReport";

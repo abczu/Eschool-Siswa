@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 class ContactUsScreen extends StatefulWidget {
   const ContactUsScreen({Key? key}) : super(key: key);
@@ -207,93 +208,120 @@ class _ContactUsScreenState extends State<ContactUsScreen>
 
                               if (state is AppSettingsFetchSuccess) {
                                 final result = state.appSettingsResult;
-                                // Try to extract mail, phone, address using RegExp
-                                final mailMatch = RegExp(r'mail\s*:\s*"(.*?)"')
-                                    .firstMatch(result);
-                                final phoneMatch =
-                                    RegExp(r'phone\s*:\s*"(.*?)"')
-                                        .firstMatch(result);
-                                final addressMatch =
-                                    RegExp(r'address\s*:\s*"(.*?)"')
-                                        .firstMatch(result);
+                                
+                                // Convert HTML to plain text with newlines
+                                String plainText = result
+                                    .replaceAll(RegExp(r'<br[^>]*>', caseSensitive: false), '\n')
+                                    .replaceAll(RegExp(r'</p>|</div>|</h[1-6]>', caseSensitive: false), '\n')
+                                    .replaceAll(RegExp(r'<[^>]+>'), '')
+                                    .replaceAll(RegExp(r'\n+'), '\n')
+                                    .trim();
 
-                                if (mailMatch != null &&
-                                    mailMatch.group(1)!.isNotEmpty) {
-                                  email = mailMatch.group(1)!;
-                                }
-                                if (phoneMatch != null &&
-                                    phoneMatch.group(1)!.isNotEmpty) {
-                                  phone = phoneMatch.group(1)!;
-                                }
-                                if (addressMatch != null &&
-                                    addressMatch.group(1)!.isNotEmpty) {
-                                  address = addressMatch.group(1)!;
+                                // Extract data line by line
+                                List<String> lines = plainText
+                                    .split('\n')
+                                    .map((e) => e.trim())
+                                    .where((e) => e.isNotEmpty)
+                                    .toList();
+
+                                for (int i = 0; i < lines.length; i++) {
+                                  String line = lines[i];
+                                  
+                                  // Extract Email
+                                  if (email.isEmpty) {
+                                    final emailMatch = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}').firstMatch(line);
+                                    if (emailMatch != null) email = emailMatch.group(0)!;
+                                  }
+                                  
+                                  // Extract Phone (+62 or 08 followed by numbers, spaces, dashes)
+                                  if (phone.isEmpty) {
+                                    final phoneMatch = RegExp(r'(?:\+62|08)[0-9\-\s]{8,20}').firstMatch(line);
+                                    if (phoneMatch != null) {
+                                      // Clean up the phone string
+                                      phone = phoneMatch.group(0)!.trim();
+                                    }
+                                  }
+                                  
+                                  // Extract Address
+                                  if (address.isEmpty && line.toLowerCase().contains('alamat') && i + 1 < lines.length) {
+                                    // Take the next line as address
+                                    address = lines[i + 1];
+                                  }
                                 }
                               }
 
                               return Column(
                                 children: [
-                                  GestureDetector(
+                                  _buildContactCard(
+                                    Icons.email_rounded,
+                                    Utils.getTranslatedLabel(sendEmailKey),
+                                    email,
+                                    primaryColor: primaryColor,
                                     onTap: () async {
                                       if (email.isNotEmpty) {
                                         final Uri emailUri = Uri(
                                           scheme: 'mailto',
                                           path: email,
                                         );
-                                        if (await Utils.canLaunchUrl(
-                                            emailUri)) {
-                                          await Utils.launchUrl(emailUri);
+                                        try {
+                                          await url_launcher.launchUrl(
+                                            emailUri,
+                                            mode: url_launcher
+                                                .LaunchMode.externalApplication,
+                                          );
+                                        } catch (e) {
+                                          debugPrint('Could not launch email: $e');
                                         }
                                       }
                                     },
-                                    child: _buildContactCard(
-                                      Icons.email_rounded,
-                                      Utils.getTranslatedLabel(sendEmailKey),
-                                      email,
-                                      primaryColor: primaryColor,
-                                    ),
                                   ),
                                   const SizedBox(height: 16),
-                                  GestureDetector(
+                                  _buildContactCard(
+                                    Icons.phone_rounded,
+                                    Utils.getTranslatedLabel(contactUsKey),
+                                    phone,
+                                    primaryColor: primaryColor,
                                     onTap: () async {
                                       if (phone.isNotEmpty) {
                                         final Uri phoneUri = Uri(
                                           scheme: 'tel',
                                           path: phone,
                                         );
-                                        if (await Utils.canLaunchUrl(
-                                            phoneUri)) {
-                                          await Utils.launchUrl(phoneUri);
+                                        try {
+                                          await url_launcher.launchUrl(
+                                            phoneUri,
+                                            mode: url_launcher
+                                                .LaunchMode.externalApplication,
+                                          );
+                                        } catch (e) {
+                                          debugPrint('Could not launch phone: $e');
                                         }
                                       }
                                     },
-                                    child: _buildContactCard(
-                                      Icons.phone_rounded,
-                                      Utils.getTranslatedLabel(contactUsKey),
-                                      phone,
-                                      primaryColor: primaryColor,
-                                    ),
                                   ),
                                   const SizedBox(height: 16),
-                                  GestureDetector(
+                                  _buildContactCard(
+                                    Icons.location_on_rounded,
+                                    Utils.getTranslatedLabel(visitUsKey),
+                                    address,
+                                    primaryColor: primaryColor,
                                     onTap: () async {
                                       if (address.isNotEmpty) {
-                                        final Uri mapUri = Uri(
-                                          scheme: 'geo',
-                                          host: '0,0',
-                                          queryParameters: {'q': address},
+                                        // Use Google Maps URL for better compatibility
+                                        final Uri mapUri = Uri.parse(
+                                          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}',
                                         );
-                                        if (await Utils.canLaunchUrl(mapUri)) {
-                                          await Utils.launchUrl(mapUri);
+                                        try {
+                                          await url_launcher.launchUrl(
+                                            mapUri,
+                                            mode: url_launcher
+                                                .LaunchMode.externalApplication,
+                                          );
+                                        } catch (e) {
+                                          debugPrint('Could not launch map: $e');
                                         }
                                       }
                                     },
-                                    child: _buildContactCard(
-                                      Icons.location_on_rounded,
-                                      Utils.getTranslatedLabel(visitUsKey),
-                                      address,
-                                      primaryColor: primaryColor,
-                                    ),
                                   ),
                                 ],
                               );
@@ -319,62 +347,73 @@ class _ContactUsScreenState extends State<ContactUsScreen>
     String title,
     String content, {
     required Color primaryColor,
+    required VoidCallback onTap,
   }) {
     return FadeInUp(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+          splashColor: primaryColor.withValues(alpha: 0.1),
+          highlightColor: primaryColor.withValues(alpha: 0.05),
+          child: Ink(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 30, color: primaryColor),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  Text(
-                    content,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                  child: Icon(icon, size: 30, color: primaryColor),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (content.isNotEmpty)
+                        Text(
+                          content,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 16),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: primaryColor,
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: primaryColor,
-            ),
-          ],
+          ),
         ),
       ),
     );

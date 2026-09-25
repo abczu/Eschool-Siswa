@@ -55,29 +55,36 @@ class ResultScreen extends StatelessWidget {
                   ),
                   child: SvgButton(
                     onTap: () {
-                      int studentUserId = 0;
+                      final bool isParent = context.read<AuthCubit>().isParent();
+                      int targetStudentId = 0;
 
-                      if (context.read<AuthCubit>().isParent()) {
+                      if (isParent) {
                         final student = context
                             .read<AuthCubit>()
                             .getParentDetails()
                             .children
                             ?.where((child) => child.id == childId)
-                            .first;
-                        studentUserId = student?.userId ?? 0;
+                            .firstOrNull;
+                        targetStudentId = student?.id ?? student?.userId ?? childId ?? 0;
+                      } else {
+                        targetStudentId = context
+                                .read<AuthCubit>()
+                                .getStudentDetails()
+                                .id ??
+                            context
+                                .read<AuthCubit>()
+                                .getStudentDetails()
+                                .userId ??
+                            0;
                       }
+
                       Get.dialog(BlocProvider(
                         create: (context) =>
                             DownloadStudentResultCubit(ResultRepository()),
                         child: DownloadStudentResultDialog(
-                          childId: context.read<AuthCubit>().isParent()
-                              ? studentUserId
-                              : context
-                                      .read<AuthCubit>()
-                                      .getStudentDetails()
-                                      .id ??
-                                  0,
+                          childId: targetStudentId,
                           examId: result.examId,
+                          useParentApi: isParent,
                         ),
                       ));
                     },
@@ -527,95 +534,30 @@ class ResultScreen extends StatelessWidget {
 class DownloadStudentResultDialog extends StatefulWidget {
   final int examId;
   final int childId;
-  const DownloadStudentResultDialog(
-      {super.key, required this.childId, required this.examId});
+  final bool useParentApi;
+  const DownloadStudentResultDialog({
+    super.key,
+    required this.childId,
+    required this.examId,
+    this.useParentApi = false,
+  });
 
   @override
   State<DownloadStudentResultDialog> createState() =>
       _DownloadStudentResultDialogState();
 }
 
-// class _DownloadStudentResultDialogState
-//     extends State<DownloadStudentResultDialog> {
-//   @override
-//   void initState() {
-//     super.initState();
-//     Future.delayed(Duration.zero, () {
-//       context.read<DownloadStudentResultCubit>().downloadStudentResult(
-//             childId: widget.childId,
-//             examId: widget.examId,
-//           );
-//     });
-//   }
-
-//   Future<void> _openFile(String filePath) async {
-//     try {
-//       final result = await OpenFilex.open(
-//         filePath,
-//         type: 'application/pdf',
-//       );
-//       if (result.type != ResultType.done && mounted) {
-//         Utils.showCustomSnackBar(
-//           context: context,
-//           errorMessage: "Failed to open file",
-//           backgroundColor: Theme.of(context).colorScheme.error,
-//         );
-//       }
-//     } catch (e) {
-//       if (mounted) {
-//         Utils.showCustomSnackBar(
-//           context: context,
-//           errorMessage: e.toString(),
-//           backgroundColor: Theme.of(context).colorScheme.error,
-//         );
-//       }
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocListener<DownloadStudentResultCubit, DownloadStudentResultState>(
-//       listener: (context, state) async {
-//         if (state is DownloadStudentResultSuccess) {
-//           Get.back();
-//           await _openFile(state.downloadedFilePath);
-//         } else if (state is DownloadStudentResultFailure) {
-//           Utils.showCustomSnackBar(
-//             context: context,
-//             errorMessage: Utils.getTranslatedLabel(state.errorMessage),
-//             backgroundColor: Theme.of(context).colorScheme.error,
-//           );
-//           Get.back();
-//         }
-//       },
-//       child: AlertDialog(
-//         title: Row(
-//           children: [
-//             CustomCircularProgressIndicator(
-//               widthAndHeight: 15.0,
-//               strokeWidth: 2.0,
-//               indicatorColor: Theme.of(context).colorScheme.primary,
-//             ),
-//             const SizedBox(width: 10.0),
-//             Flexible(
-//               child: Text(
-//                 Utils.getTranslatedLabel(downloadingResultKey),
-//                 style: const TextStyle(fontSize: 15.0),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-class _DownloadStudentResultDialogState extends State<DownloadStudentResultDialog> {
+class _DownloadStudentResultDialogState
+    extends State<DownloadStudentResultDialog> {
   @override
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
       context.read<DownloadStudentResultCubit>().downloadStudentResult(
-          childId: widget.childId, examId: widget.examId);
+            childId: widget.childId,
+            examId: widget.examId,
+            useParentApi: widget.useParentApi,
+          );
     });
   }
 
@@ -627,9 +569,14 @@ class _DownloadStudentResultDialogState extends State<DownloadStudentResultDialo
           Get.back();
           OpenFilex.open(state.downloadedFilePath);
         } else if (state is DownloadStudentResultFailure) {
+          // Try translated label first; if it returns the same key, use the raw message
+          final translated = Utils.getTranslatedLabel(state.errorMessage);
+          final displayMsg = (translated == state.errorMessage)
+              ? state.errorMessage
+              : translated;
           Utils.showCustomSnackBar(
               context: context,
-              errorMessage: Utils.getTranslatedLabel(state.errorMessage),
+              errorMessage: displayMsg,
               backgroundColor: Theme.of(context).colorScheme.error);
           Get.back();
         }

@@ -299,7 +299,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Widget _buildFormContent() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Stack(
           alignment: Alignment.center,
@@ -336,6 +336,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         const SizedBox(height: 24),
         Text(
           "Masukkan Kode Verifikasi",
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -346,6 +347,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         const SizedBox(height: 8),
         Text(
           "Kode verifikasi OTP 6 digit telah dikirimkan ke $_identifier.",
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
             height: 1.4,

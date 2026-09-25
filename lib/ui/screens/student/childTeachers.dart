@@ -171,18 +171,20 @@ class _ChildTeachersScreenState extends State<ChildTeachersScreen>
                                     color: Colors.orange,
                                   ),
                                 ),
-                              Text(
-                                subjectTeacher.subject?.nameWithType ?? "",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: subjectTeacher.subject?.nameWithType ==
-                                          "Wali Kelas"
-                                      ? Colors.orange
-                                      : Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  subjectTeacher.subject?.nameWithType ?? "",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: subjectTeacher.subject?.nameWithType ==
+                                            "Wali Kelas"
+                                        ? Colors.orange
+                                        : Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),

@@ -72,8 +72,9 @@ class GalleryFile {
         modalType = json['modal_type'] as String?,
         modalId = json['modal_id'] as int?,
         fileName = json['file_name'] as String?,
-        fileThumbnail = json['file_thumbnail'] as String?,
-        type = json['type'] as String?,
+        fileThumbnail = json['file_thumbnail'] as String? ??
+            json['youtube_url_action']?['img'] as String?,
+        type = json['type']?.toString(),
         fileUrl = json['file_url'] as String?,
         schoolId = json['school_id'] as int?,
         createdAt = json['created_at'] as String?,
@@ -81,7 +82,8 @@ class GalleryFile {
         deletedAt = json['deleted_at'] as String?,
         fileExtension = json['file_extension'] as String?,
         typeDetail = json['type_detail'] as String?,
-        embedYoutubeUrl = json['embed_youtube_url'] as String?;
+        embedYoutubeUrl = json['embed_youtube_url'] as String? ??
+            json['youtube_url_action']?['embed_url'] as String?;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -106,5 +108,21 @@ class GalleryFile {
       return false;
     }
     return (fileExtension?.toLowerCase() == "svg") || url.endsWith(".svg");
+  }
+
+  bool isImage() {
+    return type == "1" || typeDetail?.toLowerCase() == "file upload";
+  }
+
+  bool isYoutubeVideo() {
+    return type == "2" || typeDetail?.toLowerCase() == "youtube link";
+  }
+
+  bool isUploadedVideo() {
+    return type == "3" || typeDetail?.toLowerCase() == "video upload";
+  }
+
+  bool isVideo() {
+    return isYoutubeVideo() || isUploadedVideo();
   }
 }

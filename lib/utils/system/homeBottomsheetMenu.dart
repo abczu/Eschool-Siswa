@@ -69,6 +69,11 @@ final List<Menu> homeBottomSheetMenu = [
       iconUrl: Utils.getImagePath("extracurricular_icon.svg"),
       title: extracurricularKey,
       menuModuleId: defaultModuleId.toString()),
+  // Modul Pelanggaran Siswa - selalu tampil (read-only ringkasan siswa)
+  Menu(
+      iconUrl: Utils.getImagePath("violation_icon.svg"),
+      title: violationsKey,
+      menuModuleId: defaultModuleId.toString()),
   Menu(
       iconUrl: Utils.getImagePath("setting_icon.svg"),
       title: settingsKey,

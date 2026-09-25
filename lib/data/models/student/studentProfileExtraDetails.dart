@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class StudentProfileExtraDetails {
   final int? id;
   final int? studentId;
@@ -35,9 +37,45 @@ class StudentProfileExtraDetails {
       : id = json['id'] as int?,
         studentId = json['student_id'] as int?,
         formFieldId = json['form_field_id'] as int?,
-        data = json['data'] as String?,
-        formField = FormField.fromJson(Map.from(json['form_field'] ?? {})),
-        schoolId = json['school_id'] as int?;
+        data = json['data']?.toString(),
+        formField = _parseFormField(json),
+        schoolId = json['school_id'] as int? {
+    debugPrint("🔍 [ExtraDetails.fromJson] raw json: $json -> formField.name: '${formField?.name}'");
+  }
+
+  static FormField _parseFormField(Map<String, dynamic> json) {
+    Map<String, dynamic> fieldMap = Map.from(
+      json['form_field'] ??
+          json['formfield'] ??
+          json['form_fields'] ??
+          json['field'] ??
+          json['field_details'] ??
+          json['form_field_details'] ??
+          {},
+    );
+
+    FormField parsed = FormField.fromJson(fieldMap);
+    if (parsed.name == null || parsed.name!.trim().isEmpty) {
+      final rootName = (json['name'] ??
+              json['label'] ??
+              json['form_field_name'] ??
+              json['title'] ??
+              json['field_name'] ??
+              json['input_label'] ??
+              json['field_label'] ??
+              json['question'] ??
+              json['header'] ??
+              json['slug'] ??
+              json['key'])
+          ?.toString()
+          .trim();
+
+      if (rootName != null && rootName.isNotEmpty) {
+        parsed = parsed.copyWith(name: rootName);
+      }
+    }
+    return parsed;
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -70,8 +108,20 @@ class FormField {
   }
 
   FormField.fromJson(Map<String, dynamic> json)
-      : id = json['id'] as int?,
-        name = json['name'] as String?;
+      : id = (json['id'] ?? json['form_field_id']) as int?,
+        name = (json['name'] ??
+                json['label'] ??
+                json['title'] ??
+                json['field_name'] ??
+                json['form_field_name'] ??
+                json['input_label'] ??
+                json['field_label'] ??
+                json['question'] ??
+                json['header'] ??
+                json['slug'] ??
+                json['key'])
+            ?.toString()
+            .trim();
 
   Map<String, dynamic> toJson() => {'id': id, 'name': name};
 }

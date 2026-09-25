@@ -15,7 +15,6 @@ class ChangePasswordScreen extends StatefulWidget {
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
-
 class _ChangePasswordScreenState extends State<ChangePasswordScreen>
     with TickerProviderStateMixin {
   final TextEditingController _currentPasswordController =

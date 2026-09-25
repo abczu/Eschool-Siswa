@@ -10,6 +10,7 @@ const String schoolCodeKey = "schoolCode";
 const String isStudentLogInKey = "isStudentLogIn";
 const String studentDetailsKey = "studentDetails";
 const String parentDetailsKey = "parentDetails";
+const String parentJwtTokenKey = "parentJwtToken";
 const String childrenDataKey =
     "childrenData"; // Add key for children persistence
 

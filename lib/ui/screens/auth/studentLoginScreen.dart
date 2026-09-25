@@ -525,23 +525,29 @@ class _StudentLoginScreenState extends State<StudentLoginScreen>
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          Utils.getTranslatedLabel(letsSignInKey),
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF303030),
-            letterSpacing: 0.5,
+        Center(
+          child: Text(
+            Utils.getTranslatedLabel(letsSignInKey),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF303030),
+              letterSpacing: 0.5,
+            ),
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          "${Utils.getTranslatedLabel(welcomeBackKey)}, ${Utils.getTranslatedLabel(youHaveBeenMissedKey)}",
-          style: TextStyle(
-            fontSize: 16,
-            height: 1.4,
-            color: Colors.grey.shade700,
-            fontWeight: FontWeight.w400,
+        Center(
+          child: Text(
+            "${Utils.getTranslatedLabel(welcomeBackKey)} ${Utils.getTranslatedLabel(youHaveBeenMissedKey)}",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
         const SizedBox(height: 28),

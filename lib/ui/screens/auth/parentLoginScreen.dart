@@ -329,8 +329,8 @@ class _ParentLoginScreenState extends State<ParentLoginScreen>
         listener: (context, state) {
           if (state is SignInSuccess) {
             context.read<AuthCubit>().authenticateUser(
-                  schoolCode: "",
-                  jwtToken: "",
+                  schoolCode: state.schoolCode,
+                  jwtToken: state.jwtToken,
                   isStudent: state.isStudentLogIn,
                   parent: state.parent,
                   student: state.student,

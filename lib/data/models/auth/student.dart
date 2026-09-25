@@ -30,6 +30,8 @@ class Student {
   final int? rollNumber;
   final String? admissionNo;
   final String? admissionDate;
+  final String? nisn;
+  final String? nis;
   final List<StudentProfileExtraDetails>? studentProfileExtraDetails;
   final ChildUserDetails? childUserDetails;
 
@@ -57,6 +59,8 @@ class Student {
     this.school,
     this.admissionDate,
     this.admissionNo,
+    this.nisn,
+    this.nis,
     this.rollNumber,
     this.sessionYearId,
     this.studentProfileExtraDetails,
@@ -152,19 +156,25 @@ class Student {
         status = int.parse(
             (json['status'] ?? json['user']?['status'] ?? 0).toString()),
         fcmId = (json['fcm_id'] ?? json['user']?['fcm_id']) as String?,
-        schoolId = (json['school_id'] ?? json['user']?['school_id']) as int?,
+        schoolId = (json['school_id'] ??
+            json['user']?['school_id'] ??
+            json['user']?['school']?['id'] ??
+            json['school']?['id']) as int?,
         createdAt =
             (json['created_at'] ?? json['user']?['created_at']) as String?,
         classSection =
             ClassSection.fromJson(Map.from(json['class_section'] ?? {})),
         guardian = Guardian.fromJson(Map.from(json['guardian'] ?? {})),
-        school = School.fromJson(Map.from(json['school'] ?? {})),
+        school = School.fromJson(Map.from(
+            json['user']?['school'] ?? json['school'] ?? {})),
         schoolName = json['school_name'] as String? ??
             json['user']?['school']?['name'] as String?,
         sessionYearId = json['session_year_id'] as int?,
         rollNumber = json['roll_number'] as int?,
         admissionDate = json['admission_date'] as String?,
         admissionNo = json['admission_no'] as String?,
+        nisn = (json['nisn'] ?? json['user']?['nisn'])?.toString(),
+        nis = (json['nis'] ?? json['user']?['nis'])?.toString(),
         studentProfileExtraDetails = ((json['extra_details'] ?? []) as List)
             .map((details) =>
                 StudentProfileExtraDetails.fromJson(Map.from(details ?? {})))
@@ -195,6 +205,8 @@ class Student {
         'roll_number': rollNumber,
         'admission_date': admissionDate,
         'admission_no': admissionNo,
+        'nisn': nisn,
+        'nis': nis,
         'user_id': userId,
         'extra_details':
             studentProfileExtraDetails?.map((e) => e.toJson()).toList(),
@@ -203,17 +215,13 @@ class Student {
       };
 
   String getFullName() {
-    return "$firstName";
+    final first = firstName ?? "";
+    final last = lastName ?? "";
+    return "$first $last".trim();
   }
-  // String getFullName() {
-  //   return "$firstName $lastName";
-  // }
 
   @override
   String toString() {
-    return '$firstName - ${classSection?.classDetails?.name}${classSection?.section?.name}';
+    return '${getFullName()} - ${classSection?.classDetails?.name}${classSection?.section?.name}';
   }
-  // String toString() {
-  //   return '$firstName $lastName - ${classSection?.classDetails?.name}${classSection?.section?.name}';
-  // }
 }

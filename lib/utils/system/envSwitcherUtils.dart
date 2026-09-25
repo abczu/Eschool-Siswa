@@ -10,7 +10,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 
 class EnvSwitcherUtil {
+  static bool _isDialogOpen = false;
+
   static void showEnvDialog(BuildContext context) {
+    if (_isDialogOpen) return;
+    _isDialogOpen = true;
+
     Get.dialog(
       StatefulBuilder(
         builder: (ctx, setDialogState) {
@@ -45,7 +50,9 @@ class EnvSwitcherUtil {
         },
       ),
       barrierDismissible: true,
-    );
+    ).then((_) {
+      _isDialogOpen = false;
+    });
   }
 
   static Widget _dialogEnvOption(

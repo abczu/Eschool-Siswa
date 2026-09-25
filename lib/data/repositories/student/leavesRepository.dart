@@ -205,6 +205,10 @@ class LeavesRepository {
         throw ApiException(result['message'] ??
             ErrorMessageKeysAndCode.defaultErrorMessageCode);
       }
+    } on ApiException {
+      // Langsung rethrow supaya pesan error dari API (misal validasi hari libur)
+      // sampai ke Cubit tanpa di-wrap ulang.
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
         print("\nError Details:");

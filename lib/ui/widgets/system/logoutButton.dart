@@ -70,14 +70,9 @@ class LogoutButton extends StatelessWidget {
                       context
                           .read<StudentSubjectsAndSlidersCubit>()
                           .clearSubjects();
-
-                      if (context.read<AuthCubit>().isParent()) {
-                        Get.back();
-                      }
-
+                          
                       context.read<AuthCubit>().signOut();
-                      Get.back();
-                      Get.offNamed(Routes.auth);
+                      Get.offAllNamed(Routes.auth);
                     },
                   ),
                 ),

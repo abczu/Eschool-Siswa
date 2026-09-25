@@ -16,6 +16,9 @@ import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:eschool/data/repositories/payment/xenditRepository.dart';
 import 'package:eschool/cubits/student/studentGuardianDetailsCubit.dart';
 import 'package:eschool/cubits/student/subjectAttendanceCubit.dart';
+import 'package:eschool/cubits/student/violationCubit.dart';
+import 'package:eschool/data/repositories/student/violationRepository.dart';
+import 'package:eschool/ui/widgets/student/violationContainer.dart';
 import 'package:eschool/cubits/academic/timeTableCubit.dart';
 import 'package:eschool/data/models/system/notificationDetails.dart';
 import 'package:eschool/data/repositories/extracurricular/extracurricularRepository.dart';
@@ -49,6 +52,7 @@ import 'package:eschool/ui/widgets/academic/subjectAttendanceContainer.dart';
 import 'package:eschool/ui/widgets/academic/timetableContainer.dart';
 import 'package:eschool/utils/academic/ExamSubmitSyncService.dart';
 import 'package:eschool/utils/system/constants.dart';
+import 'package:eschool/ui/widgets/system/customBackButton.dart';
 import 'package:eschool/utils/system/homeBottomsheetMenu.dart';
 import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:eschool/utils/system/systemModules.dart';
@@ -133,7 +137,8 @@ class HomeScreenState extends State<HomeScreen>
       Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero).animate(
     CurvedAnimation(
       parent: _moreMenuBottomsheetAnimationController,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
     ),
   );
 
@@ -141,7 +146,8 @@ class HomeScreenState extends State<HomeScreen>
       Tween<double>(begin: 0.0, end: 1.0).animate(
     CurvedAnimation(
       parent: _moreMenuBottomsheetAnimationController,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
     ),
   );
 
@@ -171,8 +177,10 @@ class HomeScreenState extends State<HomeScreen>
       context
           .read<SchoolConfigurationCubit>()
           .fetchSchoolConfiguration(useParentApi: false);
-      // Safety Net Poin 2: Cek invoice pending saat halaman pertama dibuka
-      context.read<PendingPaymentCheckCubit>().checkAllPendingPayments();
+      // Safety Net Poin 2: Cek invoice pending saat halaman pertama dibuka (HANYA UNTUK PARENT)
+      if (context.read<AuthCubit>().isParent()) {
+        context.read<PendingPaymentCheckCubit>().checkAllPendingPayments();
+      }
 
       // ✅ REGISTER FCM TOKEN: Daftarkan token setelah login dipastikan sudah siap
       AuthRepository().GetDeviceToken().then((token) {
@@ -280,7 +288,8 @@ class HomeScreenState extends State<HomeScreen>
     if (state == AppLifecycleState.resumed) {
       loadTemporarilyStoredNotifications();
       // Safety Net Poin 2: Re-cek invoice pending saat app dibuka kembali dari background
-      if (mounted) {
+      // Safety Net Poin 1: Cek saat resume (HANYA UNTUK PARENT)
+      if (mounted && context.read<AuthCubit>().isParent()) {
         context.read<PendingPaymentCheckCubit>().checkAllPendingPayments();
       }
     }
@@ -388,6 +397,18 @@ class HomeScreenState extends State<HomeScreen>
     setState(() {
       _isMoreMenuOpen = false;
     });
+  }
+
+  Future<void> _closeMenuItem() async {
+    // Kembali dari halaman fitur ke tampilan terakhir (grid menu seperti di foto),
+    // bukan ke beranda. Jadi tutup konten fitur lalu buka kembali bottom sheet menu.
+    setState(() {
+      _currentlyOpenMenuIndex = -1;
+      _isMoreMenuOpen = true;
+    });
+    if (!_moreMenuBottomsheetAnimationController.isAnimating) {
+      await _moreMenuBottomsheetAnimationController.forward();
+    }
   }
 
   Future<void> _onTapMoreMenuItemContainer(int index) async {
@@ -685,6 +706,15 @@ class HomeScreenState extends State<HomeScreen>
         child: SubjectAttendanceContainer(),
       );
     }
+    // Modul Pelanggaran Siswa (ringkasan siswa, read-only)
+    if (homeBottomSheetMenu[_currentlyOpenMenuIndex].title == violationsKey) {
+      return BlocProvider(
+        create: (context) => ViolationCubit(ViolationRepository()),
+        child: ViolationContainer(
+          onBack: _closeMenuItem,
+        ),
+      );
+    }
     return const SizedBox();
   }
 
@@ -698,9 +728,8 @@ class HomeScreenState extends State<HomeScreen>
       canPop: canPopScreen(),
       onPopInvokedWithResult: (value, _) {
         if (_currentlyOpenMenuIndex != -1) {
-          setState(() {
-            _currentlyOpenMenuIndex = -1;
-          });
+          // System back dari halaman fitur -> kembali ke grid menu terakhir
+          _closeMenuItem();
           return;
         }
         if (_isMoreMenuOpen) {
@@ -786,13 +815,37 @@ class HomeScreenState extends State<HomeScreen>
                           ),
 
                           // Show menu item content as full screen when a menu item is opened
+                          // Setiap fitur mendapat tombol back seperti Poin Pelanggaran,
+                          // tap back / system back mengarah kembali ke menu utama.
                           if (_currentlyOpenMenuIndex != -1)
                             Material(
                               color: Theme.of(context).scaffoldBackgroundColor,
                               child: SizedBox(
                                 width: MediaQuery.of(context).size.width,
                                 height: MediaQuery.of(context).size.height,
-                                child: _buildMenuItemContainer(),
+                                child: Stack(
+                                  children: [
+                                    _buildMenuItemContainer(),
+                                    // Poin Pelanggaran sudah punya tombol back sendiri
+                                    // (ViolationContainer onBack), jadi overlay hanya
+                                    // untuk menu lainnya agar tidak dobel.
+                                    if (homeBottomSheetMenu[
+                                            _currentlyOpenMenuIndex]
+                                        .title !=
+                                        violationsKey)
+                                      Positioned(
+                                        left: 10,
+                                        top: MediaQuery.of(context)
+                                                .padding
+                                                .top +
+                                            Utils.screenContentTopPadding -
+                                            2,
+                                        child: CustomBackButton(
+                                          onTap: _closeMenuItem,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
 

@@ -21,8 +21,18 @@ class ResultOnlineDetails {
     inCorrectAnswers = json['in_correct_answers'] != null
         ? ResultAnswers.fromJson(json['in_correct_answers'])
         : null;
-    totalObtainedMarks =
+    int obtainedMarks =
         int.parse((json['total_obtained_marks'] ?? 0).toString());
+    
+    if (obtainedMarks == 0 && correctAnswers?.questionData != null) {
+      int sum = 0;
+      for (var q in correctAnswers!.questionData!) {
+        sum += (q.marks ?? 0);
+      }
+      obtainedMarks = sum;
+    }
+    
+    totalObtainedMarks = obtainedMarks;
     totalMarks = (int.parse((json['total_marks'] ?? 0).toString()));
   }
 }
@@ -51,8 +61,8 @@ class QuestionData {
   QuestionData({this.questionId, this.marks});
 
   QuestionData.fromJson(Map<String, dynamic> json) {
-    questionId = json['question_id'];
-    marks = json['marks'];
+    questionId = int.tryParse(json['question_id']?.toString() ?? '');
+    marks = int.tryParse(json['marks']?.toString() ?? '');
   }
 
   Map<String, dynamic> toJson() {

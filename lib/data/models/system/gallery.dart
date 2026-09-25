@@ -78,14 +78,14 @@ class Gallery {
         'file': files?.map((e) => e.toJson()).toList(),
       };
 
-  ///[Type will have 1 and 2 value. 1 = Image and 2 = Youtube Video]
+  /// Returns video files (Type 2 = YouTube Video, Type 3 = Direct Uploaded Video)
   List<GalleryFile> getVideos() {
-    return (files ?? []).where((element) => element.type == "2").toList();
+    return (files ?? []).where((element) => element.isVideo()).toList();
   }
 
-  ///[Type will have 1 and 2 value. 1 = Image and 2 = Youtube Video]
+  /// Returns image files (Type 1 = Image File Upload)
   List<GalleryFile> getImages() {
-    return (files ?? []).where((element) => element.type == "1").toList();
+    return (files ?? []).where((element) => element.isImage()).toList();
   }
 
   bool isThumbnailSvg() {

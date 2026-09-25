@@ -225,6 +225,7 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
         _selectedIsRemote = false;
       });
 
+      if (!mounted) return;
       showCompressionResult(
         context,
         originalSize: originalSize,
@@ -450,6 +451,181 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
         duration: const Duration(seconds: 3),
         elevation: 6,
       ),
+    );
+  }
+
+  /// Dialog khusus dengan tampilan visual premium saat pengajuan izin
+  /// ditolak karena hari libur sekolah.
+  void _showHolidayRejectionDialog(String message) {
+    // Sesuaikan teks pesan agar relevan untuk izin harian (hari ini)
+    String cleanMessage = message;
+    if (cleanMessage.toLowerCase().contains("pilih hari efektif") ||
+        cleanMessage.toLowerCase().contains("tanggal yang dipilih")) {
+      cleanMessage =
+          "Hari ini merupakan hari libur sekolah. Pengajuan izin tidak dapat dilakukan pada hari libur.";
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: theme.colorScheme.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 12,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Icon / Illustration Badge
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.event_busy_rounded,
+                      color: Colors.white,
+                      size: 38,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Category Tag / Pill Badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    "Hari Libur Sekolah",
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Title
+                Text(
+                  "Pengajuan Tidak Dapat Diproses",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Message Box
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.dividerColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    cleanMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.45,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Friendly Tip Info
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        "Pengajuan izin hanya dapat dilakukan pada hari efektif belajar.",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.55),
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+
+                // Action Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shadowColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      "Mengerti",
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1304,11 +1480,26 @@ class _ApplyLeavesContainerState extends State<ApplyLeavesContainer>
                   Navigator.of(context).pop(true);
                 } else if (state is ApplyLeaveFailure) {
                   _safePopDialog();
-                  _showSnackBar(
-                    Utils.getErrorMessageFromErrorCode(
-                        context, state.errorMessage),
-                    isError: true,
-                  );
+                  // Jika errorMessage berupa kode numerik (misal "302", "500"),
+                  // terjemahkan via getErrorMessageFromErrorCode.
+                  // Jika berupa pesan langsung dari API (misal pesan hari libur),
+                  // tampilkan apa adanya supaya user tahu alasan penolakan.
+                  final isNumericCode =
+                      RegExp(r'^\d+$').hasMatch(state.errorMessage);
+                  final displayMessage = isNumericCode
+                      ? Utils.getErrorMessageFromErrorCode(
+                          context, state.errorMessage)
+                      : state.errorMessage;
+
+                  // Jika error disebabkan hari libur sekolah, tampilkan dialog visual yang menarik
+                  if (displayMessage.toLowerCase().contains('libur')) {
+                    _showHolidayRejectionDialog(displayMessage);
+                  } else {
+                    _showSnackBar(
+                      displayMessage,
+                      isError: true,
+                    );
+                  }
                 }
               },
               child: Expanded(

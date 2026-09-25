@@ -157,6 +157,13 @@ class ChildDetailMenuScreenState extends State<ChildDetailMenuScreen> {
         iconPath: Utils.getImagePath("gallery.svg"),
         title: Utils.getTranslatedLabel(galleryKey),
       ),
+      MenuContainerDetails(
+        moduleId: defaultModuleId.toString(),
+        route: Routes.childViolations,
+        arguments: widget.student,
+        iconPath: Utils.getImagePath("violation_icon.svg"),
+        title: Utils.getTranslatedLabel(violationsKey),
+      ),
     ];
 
     setState(() {});

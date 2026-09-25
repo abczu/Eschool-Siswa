@@ -56,8 +56,8 @@ class Api {
     return fallbackCode ?? ErrorMessageKeysAndCode.defaultErrorMessageCode;
   }
 
-  static Map<String, dynamic> headers() {
-    final String jwtToken = AuthRepository().getJwtToken();
+  static Map<String, dynamic> headers({String? customToken}) {
+    final String jwtToken = customToken ?? AuthRepository().getJwtToken();
     final schoolCode = AuthRepository().schoolCode;
 
     if (kDebugMode) {
@@ -157,10 +157,20 @@ class Api {
   static String get getSubjectAttendance =>
       "${databaseUrl}student/subject-attendance";
 
+  // Modul Pelanggaran Siswa (Student Discipline & Violations)
+  static String get studentViolationSummary =>
+      "${databaseUrl}student/violations/summary";
+
+  // Sisi Orang Tua: GET /api/parent/violations?child_id={student_id}
+  // (child_id milik parent yang login, divalidasi middleware checkChild)
+  static String get parentViolations => "${databaseUrl}parent/violations";
+
+  // Sisi Orang Tua: GET /api/parent/violations/download-pdf?child_id={student_id}
+  static String get parentViolationsDownloadPdf =>
+      "${databaseUrl}parent/violations/download-pdf";
+
   static String get getSystemInformation => "${databaseUrl}/api/information";
 
-  //
-  ///[Parent app apis]
   //
   static String get subjectsByChildId => "${databaseUrl}parent/subjects";
   static String get parentLogin => "${databaseUrl}parent/login";
@@ -229,8 +239,12 @@ class Api {
       "${databaseUrl}parent/payment-confirmation";
   static String get getTransactions => "${databaseUrl}payment-transactions";
   static String get downloadFeeReceipt => "${databaseUrl}parent/fees/receipt";
+  static String get studentDownloadStudentResult =>
+      "${databaseUrl}student/student-exam-result-pdf";
+  static String get parentDownloadStudentResult =>
+      "${databaseUrl}parent/student-exam-result-pdf";
   static String get downloadStudentResult =>
-      "${databaseUrl}student-exan-result-pdf";
+      "${databaseUrl}student-exam-result-pdf";
 
   // Payment submission endpoints - Updated to match API documentation
   static String get submitSinglePayment => "${databaseUrl}parent/fees/pay-bill";
@@ -321,12 +335,12 @@ class Api {
   //   }
   // }
 
-  // Update kode Eschool 1.3.3 ke 1.4.1 post - Galang
   static Future<Map<String, dynamic>> post({
     required dynamic
         body, // Ubah tipe dari Map<String, dynamic> menjadi dynamic
     required String url,
     required bool useAuthToken,
+    String? customToken,
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
     Function(int, int)? onSendProgress,
@@ -357,7 +371,7 @@ class Api {
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress,
         onSendProgress: onSendProgress,
-        options: useAuthToken ? Options(headers: headers()) : null,
+        options: useAuthToken ? Options(headers: headers(customToken: customToken)) : null,
       );
 
       if (kDebugMode) {
@@ -578,15 +592,25 @@ class Api {
   static Future<Uint8List> fetchDocumentBytes(Map<String, dynamic> data) async {
     // Prioritaskan URL karena lebih hemat memori
     if (data['pdf_url'] != null && data['pdf_url'].toString().isNotEmpty) {
+      final pdfUrl = data['pdf_url'].toString();
       if (kDebugMode) {
-        debugPrint('[Api] Downloading document via URL: ${data['pdf_url']}');
+        debugPrint('[Api] Downloading document via URL: $pdfUrl');
       }
-      final dio = _dio;
-      final response = await dio.get<List<int>>(
-        data['pdf_url'].toString(),
-        options: Options(responseType: ResponseType.bytes),
-      );
-      return Uint8List.fromList(response.data!);
+      try {
+        final standaloneDio = Dio();
+        final response = await standaloneDio.get<List<int>>(
+          pdfUrl,
+          options: Options(responseType: ResponseType.bytes),
+        );
+        if (response.data != null) {
+          return Uint8List.fromList(response.data!);
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[Api] Failed to download document from pdf_url ($pdfUrl): $e');
+        }
+        throw ApiException("Gagal mengunduh berkas PDF dari server: $e");
+      }
     }
 
     // Fallback ke Base64 (Legacy)
@@ -597,7 +621,7 @@ class Api {
       return base64Decode(data['pdf'].toString());
     }
 
-    throw ApiException("Konten dokumen tidak ditemukan dalam respons API.");
+    throw ApiException("Konten dokumen (pdf_url/pdf) tidak ditemukan dalam respons API.");
   }
 }
 
@@ -611,12 +635,32 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
       RequestOptions options = err.requestOptions;
+      final path = options.path.toLowerCase();
 
-      // Jika URL adalah refresh token atau logout, langsung bersihkan secara lokal dan ke login
-      if (options.path.contains('/auth/refresh') || options.path.contains('/logout') || options.path.contains('logout')) {
+      // Jika request adalah proses login, OTP, reset password, dll.,
+      // jangan jalankan refresh token karena ini adalah autentikasi awal.
+      // Kembalikan error langsung agar UI Login dapat menampilkan pesan kesalahan kredensial.
+      if (path.contains('login') ||
+          path.contains('otp') ||
+          path.contains('forgot-password') ||
+          path.contains('reset-password')) {
+        return handler.next(err);
+      }
+
+      if (path.contains('/auth/refresh') ||
+          path.contains('/logout') ||
+          path.contains('logout')) {
         AuthRepository().setIsLogIn(false);
         AuthRepository().setJwtToken("");
-        Get.offAllNamed(Routes.auth);
+        if (Get.currentRoute != Routes.auth) {
+          Get.offAllNamed(Routes.auth);
+        }
+        return handler.next(err);
+      }
+
+      // Jika token saat ini kosong (belum login), tidak perlu refresh token
+      final currentToken = AuthRepository().getJwtToken();
+      if (currentToken.isEmpty) {
         return handler.next(err);
       }
 
@@ -638,7 +682,7 @@ class AuthInterceptor extends Interceptor {
         final response = await Dio().post(
           "${databaseUrl}auth/refresh",
           options: Options(headers: {
-            "Authorization": "Bearer ${AuthRepository().getJwtToken()}"
+            "Authorization": "Bearer $currentToken"
           }),
         );
         
@@ -655,7 +699,16 @@ class AuthInterceptor extends Interceptor {
         _refreshTokenCompleter!.completeError(err);
         _refreshTokenCompleter = null;
         AuthRepository().signOutUser();
-        Get.offAllNamed(Routes.auth);
+        
+        if (kDebugMode) {
+          debugPrint("[AuthInterceptor] Sesi Berakhir (401). Gagal refresh token: $e");
+        }
+        
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (Get.currentRoute != Routes.auth) {
+            Get.offAllNamed(Routes.auth);
+          }
+        });
       }
     }
     return handler.next(err);

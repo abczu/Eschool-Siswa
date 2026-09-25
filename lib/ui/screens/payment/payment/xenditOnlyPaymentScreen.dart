@@ -100,7 +100,7 @@ class _XenditOnlyPaymentScreenState extends State<XenditOnlyPaymentScreen>
         _amountError = 'Masukkan nominal pembayaran';
       } else if (amount <= 0) {
         _amountError = 'Nominal harus lebih dari 0';
-      } else if (amount > maxAmount) {
+      } else if (maxAmount > 0 && amount > maxAmount) {
         _amountError =
             'Nominal melebihi total tagihan (${_formatCurrency(maxAmount)})';
       } else {
@@ -604,7 +604,9 @@ class _XenditOnlyPaymentScreenState extends State<XenditOnlyPaymentScreen>
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Maksimal: ${_formatCurrency(totalRemaining)}',
+                    totalRemaining > 0
+                        ? 'Maksimal: ${_formatCurrency(totalRemaining)}'
+                        : 'Nominal Bebas (Sumbangan Sukarela)',
                     style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.primary,
