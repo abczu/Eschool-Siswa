@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+// Kontrol bawah (durasi + slider + fullscreen) untuk video upload langsung.
+// Video YouTube dibuka ke aplikasi YouTube eksternal (tanpa player tambahan).
 class VideoControlsContainer extends StatefulWidget {
-  final bool isYoutubeVideo;
   final AnimationController controlsAnimationController;
-  final YoutubePlayerController? youtubePlayerController;
   final VideoPlayerController? videoPlayerController;
   final bool isGalleryVideo;
   final VoidCallback? onFullscreenPressed;
   const VideoControlsContainer({
     Key? key,
-    required this.isYoutubeVideo,
     this.videoPlayerController,
     required this.controlsAnimationController,
-    this.youtubePlayerController,
     this.isGalleryVideo = false,
     this.onFullscreenPressed,
   }) : super(key: key);
@@ -30,9 +27,9 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
   final double sliderHeight = 4.0;
 
   void listener() {
-    currentVideoDuration = widget.isYoutubeVideo
-        ? widget.youtubePlayerController!.value.position
-        : widget.videoPlayerController!.value.position;
+    final controller = widget.videoPlayerController;
+    if (controller == null || !controller.value.isInitialized) return;
+    currentVideoDuration = controller.value.position;
     setState(() {});
   }
 
@@ -57,9 +54,8 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
   }
 
   String _buildVideoDurationInHMS() {
-    Duration videoDuration = widget.isYoutubeVideo
-        ? widget.youtubePlayerController!.metadata.duration
-        : widget.videoPlayerController!.value.duration;
+    final controller = widget.videoPlayerController;
+    Duration videoDuration = controller?.value.duration ?? Duration.zero;
     String time = "";
     if (videoDuration.inHours != 0) {
       time = "${(videoDuration.inHours).toString().padLeft(2, '0')}:";
@@ -77,20 +73,20 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
 
   @override
   void initState() {
-    widget.youtubePlayerController?.addListener(listener);
     widget.videoPlayerController?.addListener(listener);
     super.initState();
   }
 
   @override
   void dispose() {
-    widget.youtubePlayerController?.removeListener(listener);
     widget.videoPlayerController?.removeListener(listener);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalSeconds = (widget.videoPlayerController?.value.duration.inSeconds ?? 0)
+        .toDouble();
     return Padding(
       padding: const EdgeInsets.only(
         bottom: 15,
@@ -159,15 +155,10 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
                     ),
                   ),
               child: Slider(
-                max: widget.isYoutubeVideo
-                    ? widget.youtubePlayerController!.value.metaData.duration
-                        .inSeconds
-                        .toDouble()
-                    : widget.videoPlayerController!.value.duration.inSeconds
-                        .toDouble(),
+                max: totalSeconds,
                 activeColor: Colors.white,
                 inactiveColor: Colors.white38,
-                value: currentVideoDuration.inSeconds.toDouble(),
+                value: currentVideoDuration.inSeconds.toDouble().clamp(0.0, totalSeconds > 0 ? totalSeconds : 0.0),
                 thumbColor: Theme.of(context).colorScheme.primary,
                 onChanged: (value) {
                   if (_allowGesture()) {
@@ -176,11 +167,7 @@ class _VideoControlsContainerState extends State<VideoControlsContainer> {
                         seconds: value.toInt(),
                       );
                     });
-                    widget.isYoutubeVideo
-                        ? widget.youtubePlayerController!
-                            .seekTo(currentVideoDuration)
-                        : widget.videoPlayerController!
-                            .seekTo(currentVideoDuration);
+                    widget.videoPlayerController?.seekTo(currentVideoDuration);
                   } else {
                     //if control menu is not open then open here
                     widget.controlsAnimationController.forward();

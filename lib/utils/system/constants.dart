@@ -92,7 +92,7 @@ const String defaultParentPassword = "2197498792";
 // const String defaultSchoolCode = "";
 
 // Default school code
-const String defaultSchoolCode = "SCH20260002";
+const String defaultSchoolCode = "SCH202600129";
 // const String defaultSchoolCode = "SCH20250268";
 // const String defaultSchoolCode = "SCH20243";
 

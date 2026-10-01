@@ -142,6 +142,42 @@ class Utils {
     }
   }
 
+  /// Membuka URL video di tab browser dalam aplikasi (Custom Tab).
+  ///
+  /// Isinya tetap YouTube asli (versi web) sehingga seluruh kontrol player
+  /// murni milik YouTube — namun tombol back menutup tab dan kembali ke
+  /// aplikasi dengan bersih (tanpa fullscreen nyangkut / PiP mengapung).
+  /// Jika Custom Tab tidak didukung perangkat, jatuh ke browser eksternal.
+  /// Mengembalikan true jika berhasil dibuka.
+  static Future<bool> launchExternalUrl(String? url) async {
+    final raw = (url ?? '').trim();
+    if (raw.isEmpty) return false;
+    Uri? uri = Uri.tryParse(raw);
+    if (uri == null) return false;
+    // URL tanpa scheme (mis. "youtube.com/...") → tambahkan https.
+    if (!uri.hasScheme) {
+      uri = Uri.tryParse('https://$raw');
+      if (uri == null) return false;
+    }
+    try {
+      if (!await url_launcher.canLaunchUrl(uri)) return false;
+      final opened = await url_launcher.launchUrl(
+        uri,
+        mode: url_launcher.LaunchMode.inAppBrowserView,
+        browserConfiguration:
+            const url_launcher.BrowserConfiguration(showTitle: true),
+      );
+      if (opened) return true;
+      // Fallback: browser eksternal biasa.
+      return await url_launcher.launchUrl(
+        uri,
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
   static String getImagePath(String imageName) {
     return "assets/images/$imageName";
   }

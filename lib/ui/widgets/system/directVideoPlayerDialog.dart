@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:eschool/data/models/academic/studyMaterial.dart';
@@ -9,7 +8,9 @@ import 'package:eschool/ui/widgets/system/customCircularProgressIndicator.dart';
 import 'package:eschool/ui/screens/system/playVideo/widgets/videoControlsContainer.dart';
 import 'package:eschool/ui/screens/system/playVideo/widgets/playPauseButton.dart';
 
-// Fitur tambahan Eschool 1.3.3 - Galang
+// Dialog player untuk video upload langsung (MP4).
+// Video YouTube tidak lagi diputar di sini — dibuka ke aplikasi YouTube
+// eksternal langsung dari daftar video (tanpa package player tambahan).
 class DirectVideoPlayerDialog extends StatefulWidget {
   final StudyMaterial currentlyPlayingVideo;
   final List<StudyMaterial> relatedVideos;
@@ -30,7 +31,6 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
   late StudyMaterial currentlyPlayingStudyMaterialVideo;
   late bool assignedVideoController = false;
 
-  YoutubePlayerController? _youtubePlayerController;
   VideoPlayerController? _videoPlayerController;
 
   late final AnimationController controlsMenuAnimationController =
@@ -50,13 +50,7 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
   @override
   void initState() {
     currentlyPlayingStudyMaterialVideo = widget.currentlyPlayingVideo;
-
-    if (currentlyPlayingStudyMaterialVideo.studyMaterialType ==
-        StudyMaterialType.youtubeVideo) {
-      _loadYoutubeController();
-    } else {
-      _loadVideoController();
-    }
+    _loadVideoController();
     super.initState();
   }
 
@@ -76,33 +70,6 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
     }
   }
 
-  void _loadYoutubeController() {
-    try {
-      String? youTubeId = YoutubePlayer.convertUrlToId(
-        currentlyPlayingStudyMaterialVideo.fileUrl,
-      );
-
-      if (youTubeId != null) {
-        _youtubePlayerController = YoutubePlayerController(
-          initialVideoId: youTubeId,
-          flags: const YoutubePlayerFlags(
-            hideThumbnail: true,
-            hideControls: true,
-          ),
-        );
-        assignedVideoController = true;
-      }
-    } catch (e) {
-      print("Error loading YouTube controller: $e");
-      // Handle YouTube player initialization errors gracefully
-      if (mounted) {
-        setState(() {
-          assignedVideoController = false;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     // ✅ Reset orientation ke portrait saat keluar dari dialog
@@ -110,7 +77,6 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
       DeviceOrientation.portraitUp,
     ]);
     controlsMenuAnimationController.dispose();
-    _youtubePlayerController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
   }
@@ -148,12 +114,8 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
                   ),
                   Center(
                     child: PlayPauseButtonContainer(
-                      isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                              .studyMaterialType ==
-                          StudyMaterialType.youtubeVideo,
                       controlsAnimationController:
                           controlsMenuAnimationController,
-                      youtubePlayerController: _youtubePlayerController,
                       videoPlayerController: _videoPlayerController,
                     ),
                   ),
@@ -163,10 +125,6 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
                       padding: const EdgeInsets.only(
                           bottom: 15, left: 10, right: 10),
                       child: VideoControlsContainer(
-                        isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                                .studyMaterialType ==
-                            StudyMaterialType.youtubeVideo,
-                        youtubePlayerController: _youtubePlayerController,
                         videoPlayerController: _videoPlayerController,
                         controlsAnimationController:
                             controlsMenuAnimationController,
@@ -201,60 +159,38 @@ class _DirectVideoPlayerDialogState extends State<DirectVideoPlayerDialog>
                     // ✅ Gunakan Positioned.fill + FittedBox untuk mengisi space maksimal dengan aspect ratio terjaga
                     Positioned.fill(
                       child: assignedVideoController
-                          ? (currentlyPlayingStudyMaterialVideo
-                                      .studyMaterialType ==
-                                  StudyMaterialType.youtubeVideo
+                          ? (_videoPlayerController!.value.isInitialized
                               ? FittedBox(
-                                  fit: BoxFit
-                                      .contain, // ✅ Contain = max size dengan aspect ratio terjaga
+                                  fit: BoxFit.contain,
+                                  child: SizedBox(
+                                    width: _videoPlayerController!
+                                        .value.size.width,
+                                    height: _videoPlayerController!
+                                        .value.size.height,
+                                    child: VideoPlayer(
+                                        _videoPlayerController!),
+                                  ),
+                                )
+                              : FittedBox(
+                                  fit: BoxFit.cover,
                                   child: SizedBox(
                                     width: 16 * 100,
                                     height: 9 * 100,
-                                    child: YoutubePlayerBuilder(
-                                      player: YoutubePlayer(
-                                        controller: _youtubePlayerController!,
-                                        showVideoProgressIndicator: true,
-                                        progressIndicatorColor: Colors.red,
-                                        aspectRatio: 16 / 9,
-                                      ),
-                                      builder: (context, player) {
-                                        return player;
-                                      },
-                                    ),
-                                  ),
-                                )
-                              : _videoPlayerController!.value.isInitialized
-                                  ? FittedBox(
-                                      fit: BoxFit.contain,
-                                      child: SizedBox(
-                                        width: _videoPlayerController!
-                                            .value.size.width,
-                                        height: _videoPlayerController!
-                                            .value.size.height,
-                                        child: VideoPlayer(
-                                            _videoPlayerController!),
-                                      ),
-                                    )
-                                  : FittedBox(
-                                      fit: BoxFit.cover,
-                                      child: SizedBox(
-                                        width: 16 * 100,
-                                        height: 9 * 100,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            image: DecorationImage(
-                                              fit: BoxFit.cover,
-                                              image: CachedNetworkImageProvider(
-                                                currentlyPlayingStudyMaterialVideo
-                                                    .fileThumbnail,
-                                              ),
-                                            ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        image: DecorationImage(
+                                          fit: BoxFit.cover,
+                                          image: CachedNetworkImageProvider(
+                                            currentlyPlayingStudyMaterialVideo
+                                                .fileThumbnail,
                                           ),
-                                          child:
-                                              CustomCircularProgressIndicator(),
                                         ),
                                       ),
-                                    ))
+                                      child:
+                                          CustomCircularProgressIndicator(),
+                                    ),
+                                  ),
+                                ))
                           : SizedBox(),
                     ),
                     _buildVideoControlMenuContainer(),

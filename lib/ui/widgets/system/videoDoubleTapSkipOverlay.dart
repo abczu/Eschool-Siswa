@@ -9,7 +9,6 @@ class VideoDoubleTapSkipOverlay extends StatelessWidget {
     required this.child,
     this.onTap,
     // Parameter ini tetap ada agar tidak error di file lain, meski tidak dipakai lagi
-    dynamic youtubePlayerController,
     dynamic videoPlayerController,
   }) : super(key: key);
 

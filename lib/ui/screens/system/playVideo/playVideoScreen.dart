@@ -11,8 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+// Layar player untuk video upload langsung (MP4).
+// Video YouTube tidak lagi diputar di sini — dibuka ke aplikasi YouTube
+// eksternal langsung dari daftar video (tanpa package player tambahan).
 class PlayVideoScreen extends StatefulWidget {
   final List<StudyMaterial> relatedVideos;
   final StudyMaterial currentlyPlayingVideo;
@@ -47,12 +49,11 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
 
   final double _videoContainerPotraitHeightPercentage = 0.3;
 
-  //need to use this to ensure youtube/video controller disposed properlly
+  //need to use this to ensure video controller disposed properlly
   //When user changed the video so for 100 milliseconds we set assignedVideoController
   //to false
   late bool assignedVideoController = false;
 
-  YoutubePlayerController? _youtubePlayerController;
   VideoPlayerController? _videoPlayerController;
 
   late final AnimationController controlsMenuAnimationController =
@@ -71,12 +72,7 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
 
   @override
   void initState() {
-    if (currentlyPlayingStudyMaterialVideo.studyMaterialType ==
-        StudyMaterialType.youtubeVideo) {
-      loadYoutubeController();
-    } else {
-      loadVideoController();
-    }
+    loadVideoController();
     super.initState();
     // Munculkan kontrol otomatis saat layar dibuka
     controlsMenuAnimationController.forward();
@@ -97,35 +93,6 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
     assignedVideoController = true;
   }
 
-  //to load youtube video
-  void loadYoutubeController() {
-    try {
-      String youTubeId = YoutubePlayer.convertUrlToId(
-            currentlyPlayingStudyMaterialVideo.fileUrl,
-          ) ??
-          "";
-
-      _youtubePlayerController = YoutubePlayerController(
-        initialVideoId: youTubeId,
-        flags: YoutubePlayerFlags(
-          hideThumbnail: true,
-          hideControls: true,
-          autoPlay: true, // Pastikan autoPlay aktif
-          startAt: widget.initialPosition.inSeconds,
-        ),
-      );
-      assignedVideoController = true;
-    } catch (e) {
-      print("Error loading YouTube controller: $e");
-      // Handle YouTube player initialization errors gracefully
-      if (mounted) {
-        setState(() {
-          assignedVideoController = false;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     // ✅ Reset orientation ke portrait saat keluar dari video screen
@@ -133,7 +100,6 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
       DeviceOrientation.portraitUp,
     ]);
     controlsMenuAnimationController.dispose();
-    _youtubePlayerController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
   }
@@ -155,15 +121,8 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
             child: SvgButton(
               onTap: () {
                 // Get current position to return to previous screen
-                Duration currentPosition = Duration.zero;
-                if (currentlyPlayingStudyMaterialVideo.studyMaterialType ==
-                    StudyMaterialType.youtubeVideo) {
-                  currentPosition = _youtubePlayerController?.value.position ??
-                      Duration.zero;
-                } else {
-                  currentPosition =
-                      _videoPlayerController?.value.position ?? Duration.zero;
-                }
+                Duration currentPosition =
+                    _videoPlayerController?.value.position ?? Duration.zero;
 
                 // Jika video dari Galeri (tidak ada video terkait), langsung kembali ke Galeri
                 if (widget.relatedVideos.isEmpty) {
@@ -185,12 +144,8 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
         ),
         Center(
           child: PlayPauseButtonContainer(
-            isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                    .studyMaterialType ==
-                StudyMaterialType.youtubeVideo,
             controlsAnimationController:
                 controlsMenuAnimationController,
-            youtubePlayerController: _youtubePlayerController,
             videoPlayerController: _videoPlayerController,
           ),
         ),
@@ -202,10 +157,6 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
                 : EdgeInsets.zero,
             child: VideoControlsContainer(
               isGalleryVideo: widget.relatedVideos.isEmpty,
-              isYoutubeVideo: currentlyPlayingStudyMaterialVideo
-                      .studyMaterialType ==
-                  StudyMaterialType.youtubeVideo,
-              youtubePlayerController: _youtubePlayerController,
               videoPlayerController: _videoPlayerController,
               controlsAnimationController:
                   controlsMenuAnimationController,
@@ -235,33 +186,24 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
               Center(
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: currentlyPlayingStudyMaterialVideo.studyMaterialType ==
-                          StudyMaterialType.youtubeVideo
-                      ? YoutubePlayerBuilder(
-                          player: YoutubePlayer(
-                            actionsPadding: EdgeInsets.zero,
-                            controller: _youtubePlayerController!,
-                            aspectRatio: 16 / 9,
-                          ),
-                          builder: (context, player) => player,
-                        )
-                      : _videoPlayerController!.value.isInitialized
-                          ? VideoPlayer(_videoPlayerController!)
-                          : Container(
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: CachedNetworkImageProvider(
-                                    currentlyPlayingStudyMaterialVideo
-                                        .fileThumbnail,
-                                  ),
-                                ),
-                              ),
-                              child: CustomCircularProgressIndicator(
-                                indicatorColor:
-                                    Theme.of(context).scaffoldBackgroundColor,
+                  child: _videoPlayerController != null &&
+                          _videoPlayerController!.value.isInitialized
+                      ? VideoPlayer(_videoPlayerController!)
+                      : Container(
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              fit: BoxFit.cover,
+                              image: CachedNetworkImageProvider(
+                                currentlyPlayingStudyMaterialVideo
+                                    .fileThumbnail,
                               ),
                             ),
+                          ),
+                          child: CustomCircularProgressIndicator(
+                            indicatorColor:
+                                Theme.of(context).scaffoldBackgroundColor,
+                          ),
+                        ),
                 ),
               ),
 
@@ -269,7 +211,6 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
               // This is ON TOP of the video but BELOW the dimming background when hidden
               // and ABOVE the dimming background when shown to ensure double tap always works.
               VideoDoubleTapSkipOverlay(
-                youtubePlayerController: _youtubePlayerController,
                 videoPlayerController: _videoPlayerController,
                 onTap: () {
                   if (controlsMenuAnimationController.isCompleted) {
@@ -324,6 +265,21 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
             return;
           }
 
+          // Video YouTube dibuka di aplikasi YouTube.
+          if (studyMaterial.studyMaterialType ==
+              StudyMaterialType.youtubeVideo) {
+            final opened =
+                await Utils.launchExternalUrl(studyMaterial.fileUrl);
+            if (!opened && mounted) {
+              Utils.showCustomSnackBar(
+                context: context,
+                errorMessage: "Tidak dapat membuka video YouTube",
+                backgroundColor: Colors.red,
+              );
+            }
+            return;
+          }
+
           assignedVideoController = false;
 
           currentlyPlayingStudyMaterialVideo = studyMaterial;
@@ -331,17 +287,10 @@ class _PlayVideoScreenState extends State<PlayVideoScreen>
 
           await Future.delayed(const Duration(milliseconds: 100));
           //disposing controllers
-          _youtubePlayerController?.dispose();
           _videoPlayerController?.dispose();
-          _youtubePlayerController = null;
           _videoPlayerController = null;
 
-          if (currentlyPlayingStudyMaterialVideo.studyMaterialType ==
-              StudyMaterialType.youtubeVideo) {
-            loadYoutubeController();
-          } else {
-            loadVideoController();
-          }
+          loadVideoController();
           setState(() {});
         },
         child: Container(

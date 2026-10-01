@@ -5,6 +5,7 @@ import 'package:eschool/utils/system/labelKeys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:eschool/ui/widgets/system/directVideoPlayerDialog.dart';
+import 'package:eschool/utils/system/utils.dart';
 
 class VideosContainer extends StatelessWidget {
   final List<StudyMaterial> studyMaterials;
@@ -21,6 +22,9 @@ class VideosContainer extends StatelessWidget {
     required BuildContext context,
     required int index,
   }) {
+    // Video YouTube dibuka ke aplikasi YouTube asli (tanpa player tambahan).
+    final bool isYoutube =
+        studyMaterial.studyMaterialType == StudyMaterialType.youtubeVideo;
     // Remove top margin for the first item
 
     return Animate(
@@ -165,13 +169,48 @@ class VideosContainer extends StatelessWidget {
                             bottomLeft: Radius.circular(16),
                           ),
                         ),
-                        child: const Icon(
-                          Icons.videocam,
+                        child: Icon(
+                          isYoutube
+                              ? Icons.open_in_new_rounded
+                              : Icons.videocam,
                           color: Colors.white,
                           size: 20,
                         ),
                       ),
                     ),
+                    // Penanda video YouTube dibuka di aplikasi YouTube
+                    if (isYoutube)
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.play_circle_fill,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                "YOUTUBE",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -183,7 +222,19 @@ class VideosContainer extends StatelessWidget {
   }
 
   void _startDirectVideoPlay(
-      BuildContext context, StudyMaterial studyMaterial) {
+      BuildContext context, StudyMaterial studyMaterial) async {
+    // Video YouTube dibuka di aplikasi YouTube (tanpa player tambahan).
+    if (studyMaterial.studyMaterialType == StudyMaterialType.youtubeVideo) {
+      final opened = await Utils.launchExternalUrl(studyMaterial.fileUrl);
+      if (!opened && context.mounted) {
+        Utils.showCustomSnackBar(
+          context: context,
+          errorMessage: "Tidak dapat membuka video YouTube",
+          backgroundColor: Colors.red,
+        );
+      }
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => DirectVideoPlayerDialog(

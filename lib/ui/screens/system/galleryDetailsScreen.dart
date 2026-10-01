@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eschool/data/models/system/gallery.dart';
+import 'package:eschool/data/models/system/galleryFile.dart';
 import 'package:eschool/data/models/academic/sessionYear.dart';
 import 'package:eschool/app/routes.dart';
 import 'package:eschool/data/models/academic/studyMaterial.dart';
@@ -18,7 +19,7 @@ import 'package:get/get.dart';
 import 'package:pinch_zoom/pinch_zoom.dart';
 import 'package:readmore/readmore.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:eschool/utils/system/youtubeHelper.dart';
 
 class GalleryDetailsScreen extends StatefulWidget {
   final Gallery gallery;
@@ -362,12 +363,44 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
     );
   }
 
-  void _showFullScreenVideo(BuildContext context, int index) {
-    final videos = widget.gallery.getVideos();
-    if (videos.isEmpty || index >= videos.length) return;
+  /// true jika file adalah video upload langsung (MP4), bukan YouTube.
+  bool _isDirectVideoFile(GalleryFile file) {
+    final fixed = _fixUrl(file.fileUrl ?? "");
+    if (fixed.isEmpty) return true;
+    final yid = YoutubeHelper.extractYoutubeId(fixed);
+    return file.isUploadedVideo() || file.type == "3" || yid == null;
+  }
 
-    final PageController pageController = PageController(initialPage: index);
-    int currentPage = index;
+  /// Membuka video YouTube di aplikasi YouTube (eksternal).
+  /// Mengembalikan true jika berhasil dibuka.
+  Future<bool> _openYoutubeExternal(BuildContext context, String? url) async {
+    final opened = await Utils.launchExternalUrl(url);
+    if (!opened && context.mounted) {
+      Utils.showCustomSnackBar(
+        context: context,
+        errorMessage: "Tidak dapat membuka video YouTube",
+        backgroundColor: Colors.red,
+      );
+    }
+    return opened;
+  }
+
+  void _showFullScreenVideo(BuildContext context, int index) {
+    final allVideos = widget.gallery.getVideos();
+    if (allVideos.isEmpty || index >= allVideos.length) return;
+
+    // Viewer internal hanya untuk video upload langsung (MP4).
+    // Video YouTube dibuka di aplikasi YouTube (lihat onTap thumbnail).
+    final videos = allVideos.where(_isDirectVideoFile).toList();
+    if (videos.isEmpty) return;
+    final tapped = allVideos[index];
+    if (!_isDirectVideoFile(tapped)) return;
+    final initialPage = videos.indexOf(tapped);
+    if (initialPage < 0) return;
+
+    final PageController pageController =
+        PageController(initialPage: initialPage);
+    int currentPage = initialPage;
     bool showControls = true;
 
     Navigator.of(context).push(
@@ -418,31 +451,12 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                                         style: TextStyle(color: Colors.white)));
                               }
 
-                              final String? youtubeId =
-                                  YoutubePlayer.convertUrlToId(videoUrl);
-                              final bool isDirectVideo = galleryFile.isUploadedVideo() ||
-                                  galleryFile.type == "3" ||
-                                  youtubeId == null;
-
-                              if (isDirectVideo) {
-                                return Center(
-                                  child: GalleryDirectVideoPlayer(
-                                    videoUrl: videoUrl,
-                                    onToggleControls: (visible) {
-                                      setState(() {
-                                        showControls = visible;
-                                      });
-                                    },
-                                  ),
-                                );
-                              }
-
                               return Center(
-                                child: GalleryYoutubePlayer(
-                                  youtubeId: youtubeId,
-                                  onToggleControls: () {
+                                child: GalleryDirectVideoPlayer(
+                                  videoUrl: videoUrl,
+                                  onToggleControls: (visible) {
                                     setState(() {
-                                      showControls = !showControls;
+                                      showControls = visible;
                                     });
                                   },
                                 ),
@@ -464,13 +478,14 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                                     GestureDetector(
                                       onTap: () {
                                         Clipboard.setData(ClipboardData(
-                                            text: videos[currentPage].fileUrl!));
+                                            text: videos[currentPage]
+                                                    .fileUrl!));
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withValues(alpha: 0.7),
+                                          color: Colors.white.withValues(
+                                              alpha: 0.7),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.link,
@@ -516,7 +531,8 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.7),
+                                    color:
+                                        Colors.black.withValues(alpha: 0.7),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
@@ -662,7 +678,8 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
           .map((galleryFile) {
             final String rawUrl = galleryFile.fileUrl ?? "";
             final String videoUrl = _fixUrl(rawUrl);
-            final String? youtubeId = YoutubePlayer.convertUrlToId(videoUrl);
+            final String? youtubeId =
+                YoutubeHelper.extractYoutubeId(videoUrl);
             final bool isDirectVideo = galleryFile.isUploadedVideo() ||
                 galleryFile.type == "3" ||
                 youtubeId == null;
@@ -675,7 +692,7 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                 : (fileThumb != null && fileThumb.isNotEmpty
                     ? _fixUrl(fileThumb)
                     : (youtubeId != null
-                        ? YoutubePlayer.getThumbnail(videoId: youtubeId)
+                        ? YoutubeHelper.thumbnailUrlForId(youtubeId)
                         : _fixUrl(widget.gallery.thumbnail)));
 
             final String ext = (galleryFile.fileExtension ??
@@ -779,8 +796,47 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                         ),
                       ),
                     ),
+                    // Penanda video YouTube dibuka di aplikasi YouTube
+                    if (!isDirectVideo)
+                      Positioned(
+                        bottom: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                "Tonton di YouTube",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     GestureDetector(
                       onTap: () {
+                        // Video YouTube dibuka di aplikasi YouTube
+                        // (tanpa player tambahan di dalam aplikasi).
+                        if (!isDirectVideo) {
+                          _openYoutubeExternal(context, videoUrl);
+                          return;
+                        }
                         _showFullScreenVideo(
                           context,
                           videos.indexOf(galleryFile),
@@ -816,11 +872,20 @@ class _GalleryDetailsScreenState extends State<GalleryDetailsScreen> {
                 top: -2,
                 child: const CustomBackButton(),
               ),
-              Text(
-                Utils.getTranslatedLabel(title),
-                style: TextStyle(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  fontSize: Utils.screenTitleFontSize,
+              // Judul dibatasi agar tidak menimpa tombol back.
+              Positioned(
+                left: 60,
+                right: 16,
+                top: 2,
+                child: Text(
+                  Utils.getTranslatedLabel(title),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    fontSize: Utils.screenTitleFontSize,
+                  ),
                 ),
               ),
             ]),
@@ -1583,46 +1648,5 @@ color: Colors.white.withValues(alpha: 0.1),
   }
 }
 
-class GalleryYoutubePlayer extends StatefulWidget {
-  final String youtubeId;
-  final VoidCallback onToggleControls;
 
-  const GalleryYoutubePlayer({
-    Key? key,
-    required this.youtubeId,
-    required this.onToggleControls,
-  }) : super(key: key);
-
-  @override
-  State<GalleryYoutubePlayer> createState() => _GalleryYoutubePlayerState();
-}
-
-class _GalleryYoutubePlayerState extends State<GalleryYoutubePlayer> {
-  late YoutubePlayerController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = YoutubePlayerController(
-      initialVideoId: widget.youtubeId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return YoutubePlayer(
-      controller: _controller,
-      onReady: () {},
-    );
-  }
-}
 

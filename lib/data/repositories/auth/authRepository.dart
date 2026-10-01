@@ -1,6 +1,7 @@
 import 'package:eschool/data/models/auth/guardian.dart';
 import 'package:eschool/data/models/auth/student.dart';
 import 'package:eschool/utils/system/api.dart';
+import 'package:eschool/utils/system/apiJson.dart';
 import 'package:eschool/utils/system/hiveBoxKeys.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -391,18 +392,24 @@ class AuthRepository {
   }) async {
     try {
       final token = await GetDeviceToken();
+      // Dual-key untuk backward-compatibility (backend fallback:
+      // nisn <- nis <- gr_number <- admission_no; device_token <- fcm_id).
+      // school_code wajib untuk multi-tenant resolve ke DB sekolah yang tepat.
       final body = {
-        "password": password,
+        "nisn": grNumber,
         "gr_number": grNumber,
-        "fcm_id": token
+        "password": password,
+        "school_code": schoolCode,
+        "device_token": token,
+        "fcm_id": token,
+        "platform": "android",
       };
 
       debugPrint(body.toString());
 
-      final result = await Api.post(
+      final result = await ApiJson.post(
         body: body,
         url: Api.studentLogin,
-        useAuthToken: false,
       );
 
       debugPrint("OK 0");
@@ -450,12 +457,19 @@ class AuthRepository {
   }) async {
     try {
       final token = await GetDeviceToken();
-      final body = {"password": password, "email": email, "fcm_id": token};
+      // Dual-key device_token + fcm_id untuk backward-compatibility.
+      final body = {
+        "password": password,
+        "email": email,
+        "device_token": token,
+        "fcm_id": token,
+        "platform": "android",
+      };
 
       debugPrint("DEBUG signInParent: Sending request with body: $body");
 
       final result =
-          await Api.post(body: body, url: Api.parentLogin, useAuthToken: false);
+          await ApiJson.post(body: body, url: Api.parentLogin);
 
       debugPrint("DEBUG signInParent: Raw API response: $result");
 
