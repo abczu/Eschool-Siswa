@@ -1,3 +1,9 @@
+import 'package:eschool/cubits/auth/authCubit.dart';
+import 'package:eschool/cubits/student/studentPhotoCubit.dart';
+import 'package:eschool/data/repositories/student/studentProfileRepository.dart';
+import 'package:eschool/ui/widgets/student/studentQuickPhotoSheet.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:eschool/cubits/system/schoolConfigurationCubit.dart';
 import 'package:eschool/cubits/student/studentAllProfileDetailsCubit.dart';
 import 'package:eschool/data/models/auth/student.dart';
@@ -26,8 +32,15 @@ class StudentProfileScreen extends StatefulWidget {
   State<StudentProfileScreen> createState() => _StudentProfileScreenState();
 
   static Widget routeInstance() {
-    return BlocProvider(
-      create: (context) => StudentAllProfileDetailsCubit(StudentRepository()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => StudentAllProfileDetailsCubit(StudentRepository()),
+        ),
+        BlocProvider(
+          create: (context) => StudentPhotoCubit(StudentProfileRepository()),
+        ),
+      ],
       child: Builder(
         builder: (context) {
           final arguments = Get.arguments;
@@ -59,6 +72,130 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
   final ScrollController _scrollController = ScrollController();
   bool _showFloatingActionButton = false;
   bool _hasAnimatedOnce = false;
+
+  /// URL foto terkini (hasil upload) agar langsung terlihat tanpa reload.
+  String? _currentImageUrl;
+
+  /// Hanya siswa yang login sendiri (bukan parent yang melihat anak)
+  /// yang boleh ubah foto.
+  bool get _canEditPhoto {
+    if (widget.childId != null) return false;
+    try {
+      final authState = context.read<AuthCubit>().state;
+      return authState is Authenticated && authState.isStudent;
+    } catch (_) {
+      return widget.childId == null;
+    }
+  }
+
+  String _withCacheBuster(String url) {
+    if (url.isEmpty) return url;
+    final sep = url.contains('?') ? '&' : '?';
+    return '$url${sep}v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  String _resolveProfileUrl(Student studentDetails) {
+    if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty) {
+      return _currentImageUrl!;
+    }
+    return Utils.fixImageUrl(
+        (studentDetails.childUserDetails?.image != null &&
+                studentDetails.childUserDetails!.image!.isNotEmpty)
+            ? studentDetails.childUserDetails!.image!
+            : (studentDetails.image ?? ""));
+  }
+
+  void _onChangePhoto() {
+    if (!_canEditPhoto) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => StudentQuickPhotoSheet(
+        onGallery: () => _pickAndUpload(ImageSource.gallery),
+        onCamera: () => _pickAndUpload(ImageSource.camera),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUpload(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 88,
+      );
+      if (file == null) return;
+      if (!mounted) return;
+      context.read<StudentPhotoCubit>().updateStudentPhoto(file: file);
+      _showLoadingSnackBar('Mengunggah foto…');
+    } catch (e) {
+      _showErrorSnackBar('Gagal memilih gambar: $e');
+    }
+  }
+
+  void _showLoadingSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.orange[700],
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 30),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green[600],
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFD32F2F),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -342,27 +479,88 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
                     children: [
                       Hero(
                         tag: 'profileImage${studentDetails.id}',
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              width: 3,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color:
+                                      Theme.of(context).scaffoldBackgroundColor,
+                                  width: 3,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(50),
+                                child: CustomUserProfileImageWidget(
+                                  key: ValueKey(_resolveProfileUrl(
+                                      studentDetails)),
+                                  profileUrl:
+                                      _resolveProfileUrl(studentDetails),
+                                  context: context,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(50),
-                            child: CustomUserProfileImageWidget(
-                              profileUrl: Utils.fixImageUrl(
-                                  (studentDetails.childUserDetails?.image != null &&
-                                          studentDetails.childUserDetails!.image!.isNotEmpty)
-                                      ? studentDetails.childUserDetails!.image!
-                                      : (studentDetails.image ?? "")),
-                              context: context,
-                            ),
-                          ),
+                            if (_canEditPhoto)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: BlocBuilder<StudentPhotoCubit,
+                                    StudentPhotoState>(
+                                  builder: (context, photoState) {
+                                    final bool isLoading =
+                                        photoState is StudentPhotoInProgress;
+                                    return InkWell(
+                                      onTap: isLoading ? null : _onChangePhoto,
+                                      child: Container(
+                                        width: 34,
+                                        height: 34,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Theme.of(context)
+                                              .scaffoldBackgroundColor,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                  alpha: 0.2),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: isLoading
+                                              ? SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                                Color>(
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .primary),
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  Icons.camera_alt,
+                                                  size: 18,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -813,7 +1011,40 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<StudentPhotoCubit, StudentPhotoState>(
+      listenWhen: (prev, curr) => prev.runtimeType != curr.runtimeType,
+      listener: (context, state) async {
+        if (state is StudentPhotoSuccess) {
+          final authCubit = context.read<AuthCubit>();
+          final detailsCubit = context.read<StudentAllProfileDetailsCubit>();
+          final oldUrl = _currentImageUrl ?? '';
+          if (oldUrl.isNotEmpty) {
+            try {
+              await CachedNetworkImage.evictFromCache(oldUrl);
+            } catch (_) {}
+          }
+          final raw = (state.data.image != null &&
+                  state.data.image!.isNotEmpty)
+              ? state.data.image!
+              : (state.data.childUserDetails?.image ?? '');
+          final freshUrl = _withCacheBuster(Utils.fixImageUrl(raw));
+
+          if (mounted) {
+            setState(() {
+              _currentImageUrl = freshUrl;
+            });
+            try {
+              authCubit.updateStudentDetails(state.data);
+            } catch (_) {}
+          }
+          _showSuccessSnackBar('Foto profil berhasil diperbarui');
+          detailsCubit.getStudentAllProfileDetails(
+              useParentApi: widget.childId != null, childId: widget.childId);
+        } else if (state is StudentPhotoFailure) {
+          _showErrorSnackBar('Gagal menyimpan: ${state.errorMessage}');
+        }
+      },
+      child: Scaffold(
       floatingActionButton: _showFloatingActionButton
           ? FloatingActionButton(
               onPressed: _scrollToTop,
@@ -823,8 +1054,22 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
           : null,
       body: Stack(
         children: [
-          BlocBuilder<StudentAllProfileDetailsCubit,
+          BlocListener<StudentAllProfileDetailsCubit,
               StudentAllProfileDetailsState>(
+            // Tulis-balik profil fresh (mis. foto diganti via web) ke
+            // AuthCubit + Hive, agar beranda & menu ikut baru tanpa
+            // pull-refresh. Hanya untuk siswa sendiri (childId == null);
+            // syncStudentProfileIfChanged no-op bila tidak ada perubahan.
+            listener: (context, state) {
+              if (state is StudentAllProfileDetailsFetchSuccess &&
+                  widget.childId == null) {
+                context
+                    .read<AuthCubit>()
+                    .syncStudentProfileIfChanged(state.student);
+              }
+            },
+            child: BlocBuilder<StudentAllProfileDetailsCubit,
+                StudentAllProfileDetailsState>(
             builder: (context, state) {
               if (state is StudentAllProfileDetailsFetchSuccess) {
                 return _buildProfileDetailsContainer(
@@ -843,8 +1088,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen>
               return _buildStudentDetailsShimmerLoading();
             },
           ),
+          ),
           _buildAppBar(),
         ],
+      ),
       ),
     );
   }

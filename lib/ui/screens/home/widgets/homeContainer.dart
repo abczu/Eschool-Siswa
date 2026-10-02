@@ -195,6 +195,9 @@ class _HomeContainerState extends State<HomeContainer>
               context
                   .read<SchoolConfigurationCubit>()
                   .fetchSchoolConfiguration(useParentApi: false);
+              // Ikut sinkron foto profil (mis. diganti via web).
+              // Silent + no-op bila tidak ada perubahan.
+              await context.read<AuthCubit>().refreshStudentProfileIfChanged();
             },
             child: SingleChildScrollView(
               padding: EdgeInsets.only(top: Utils.screenContentTopPadding / 2),
@@ -291,6 +294,7 @@ class _HomeContainerState extends State<HomeContainer>
               context
                   .read<SchoolConfigurationCubit>()
                   .fetchSchoolConfiguration(useParentApi: false);
+              await context.read<AuthCubit>().refreshStudentProfileIfChanged();
             },
             child: SingleChildScrollView(
               controller: ScrollControlContent,
@@ -534,8 +538,12 @@ class _HomeContainerState extends State<HomeContainer>
   }
 
   Widget _buildHeaderSection() {
-    final studentDetails = context.read<AuthCubit>().getStudentDetails();
-    return Container(
+    // BlocBuilder agar foto/nama langsung ter-update saat AuthCubit emit
+    // state baru (mis. setelah siswa ubah foto profil) tanpa pull-refresh.
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, authState) {
+        final studentDetails = context.read<AuthCubit>().getStudentDetails();
+        return Container(
       padding: EdgeInsets.symmetric(
         vertical:
             MediaQuery.of(context).padding.top + Utils.screenContentTopPadding,
@@ -556,6 +564,7 @@ class _HomeContainerState extends State<HomeContainer>
                   child: Hero(
                     tag: 'profileImage',
                     child: BorderedProfilePictureContainer(
+                      key: ValueKey(studentDetails.image ?? ""),
                       heightAndWidth: 80,
                       imageUrl: studentDetails.image ?? "",
                       onTap: () async {
@@ -581,6 +590,8 @@ class _HomeContainerState extends State<HomeContainer>
           SizedBox(height: 10),
         ],
       ),
+        );
+      },
     );
   }
 

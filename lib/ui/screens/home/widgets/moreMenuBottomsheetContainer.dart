@@ -182,7 +182,13 @@ class _MoreMenuBottomsheetContainerState
                   ),
                 ),
                 // Profile section dengan ukuran yang lebih compact
-                Container(
+                // BlocBuilder agar foto langsung ter-update setelah ubah foto
+                // tanpa perlu tutup/buka ulang menu.
+                BlocBuilder<AuthCubit, AuthState>(
+                  builder: (context, authState) {
+                    final studentDetails =
+                        context.read<AuthCubit>().getStudentDetails();
+                    return Container(
                   padding: const EdgeInsets.all(12), // Dikurangi dari 16 ke 12
                   decoration: BoxDecoration(
                     border: Border.all(
@@ -224,11 +230,9 @@ class _MoreMenuBottomsheetContainerState
                           ],
                         ),
                         child: CustomUserProfileImageWidget(
-                          profileUrl: context
-                                  .read<AuthCubit>()
-                                  .getStudentDetails()
-                                  .image ??
-                              "",
+                          key: ValueKey(
+                              studentDetails.image ?? ""),
+                          profileUrl: studentDetails.image ?? "",
                           color: Colors.black,
                         ),
                       ),
@@ -241,10 +245,7 @@ class _MoreMenuBottomsheetContainerState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              context
-                                  .read<AuthCubit>()
-                                  .getStudentDetails()
-                                  .getFullName(),
+                              studentDetails.getFullName(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -267,12 +268,7 @@ class _MoreMenuBottomsheetContainerState
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    context
-                                            .read<AuthCubit>()
-                                            .getStudentDetails()
-                                            .classSection
-                                            ?.name ??
-                                        "",
+                                    studentDetails.classSection?.name ?? "",
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -301,7 +297,7 @@ class _MoreMenuBottomsheetContainerState
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    "${Utils.getTranslatedLabel(rollNoKey)}: ${context.read<AuthCubit>().getStudentDetails().rollNumber}",
+                                    "${Utils.getTranslatedLabel(rollNoKey)}: ${studentDetails.rollNumber}",
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -343,6 +339,8 @@ class _MoreMenuBottomsheetContainerState
                       )
                     ],
                   ),
+                    );
+                  },
                 ),
 
                 SizedBox(

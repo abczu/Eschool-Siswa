@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:equatable/equatable.dart';
 import 'package:eschool/data/models/auth/guardian.dart';
 import 'package:eschool/data/models/auth/student.dart';
 import 'package:eschool/data/repositories/auth/authRepository.dart';
 import 'package:eschool/data/repositories/student/studentRepository.dart';
+import 'package:eschool/utils/system/utils.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
@@ -373,7 +375,10 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       if (s.isStudent) {
         final freshStudent = await StudentRepository().fetchStudentFullProfileDetails(useParentApi: false);
-        updatedStudent = freshStudent;
+        if (_isStudentImageChanged(s.student, freshStudent)) {
+          await _evictStudentImageCache(s.student);
+        }
+        updatedStudent = _mergeRefreshedStudentImage(s.student, freshStudent);
       } else {
         // Fetch all children in parallel to save time
         final futures = s.children.map((child) async {
@@ -466,6 +471,190 @@ class AuthCubit extends Cubit<AuthState> {
       isStudent: s.isStudent,
       student: s.student,
       parent: merged,
+      schoolCode: s.schoolCode,
+      children: s.children,
+    ));
+  }
+
+  /// Update data siswa yang login (hasil dari API update foto profil).
+  /// URL foto baru diberi cache-buster agar semua consumer
+  /// (beranda, menu, dsb.) langsung memuat foto baru tanpa refresh manual.
+  void updateStudentDetails(Student updated) {
+    if (state is! Authenticated) return;
+    final s = state as Authenticated;
+    debugPrint("UBAH PROFILE STUDENT DI AUTH CUBIT");
+
+    String? freshImage;
+    if (updated.image != null && updated.image!.isNotEmpty) {
+      freshImage = _bustImageUrl(updated.image!);
+    }
+
+    final merged = s.student.copyWith(
+      image: freshImage ?? s.student.image,
+      childUserDetails: updated.childUserDetails != null
+          ? updated.childUserDetails!.copyWith(
+              image: (updated.childUserDetails!.image != null &&
+                      updated.childUserDetails!.image!.isNotEmpty)
+                  ? _bustImageUrl(updated.childUserDetails!.image!)
+                  : updated.childUserDetails!.image,
+            )
+          : s.student.childUserDetails,
+      firstName: updated.firstName ?? s.student.firstName,
+      lastName: updated.lastName ?? s.student.lastName,
+      updatedAt: updated.updatedAt ?? s.student.updatedAt,
+    );
+
+    authRepository.setStudentDetails(merged);
+
+    emit(Authenticated(
+      jwtToken: s.jwtToken,
+      isStudent: s.isStudent,
+      student: merged,
+      parent: s.parent,
+      schoolCode: s.schoolCode,
+      children: s.children,
+    ));
+  }
+
+  String _bustImageUrl(String url) {
+    if (url.isEmpty) return url;
+    try {
+      final uri = Uri.parse(url);
+      final queryParams = Map<String, dynamic>.from(uri.queryParameters);
+      queryParams['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+      return uri.replace(queryParameters: queryParams).toString();
+    } catch (_) {
+      final sep = url.contains('?') ? '&' : '?';
+      return '$url${sep}v=${DateTime.now().millisecondsSinceEpoch}';
+    }
+  }
+
+  /// URL ternormalisasi untuk perbandingan (tanpa query `?v=...`,
+  /// setelah `fixImageUrl`), agar URL busted lokal bisa dibandingkan
+  /// dengan URL fresh dari server.
+  String _normalizeImageUrl(String url) {
+    var u = url.trim();
+    if (u.isEmpty) return '';
+    try {
+      u = Utils.fixImageUrl(u);
+    } catch (_) {}
+    final q = u.indexOf('?');
+    if (q >= 0) u = u.substring(0, q);
+    return u;
+  }
+
+  String _studentImagePairKey(Student s) {
+    return '${_normalizeImageUrl(s.image ?? '')}|'
+        '${_normalizeImageUrl(s.childUserDetails?.image ?? '')}';
+  }
+
+  bool _isStudentImageChanged(Student current, Student fresh) {
+    final oldPair = _studentImagePairKey(current);
+    final newPair = _studentImagePairKey(fresh);
+    if (newPair == oldPair) return false;
+    // Server tidak membawa info foto sama sekali -> anggap tidak berubah.
+    return newPair.replaceAll('|', '').isNotEmpty;
+  }
+
+  Future<void> _evictStudentImageCache(Student s) async {
+    final urls = <String>{
+      s.image ?? '',
+      s.childUserDetails?.image ?? '',
+    };
+    for (final url in urls) {
+      if (url.isEmpty) continue;
+      for (final key in {url, Utils.fixImageUrl(url)}) {
+        try {
+          await CachedNetworkImage.evictFromCache(key);
+        } catch (_) {}
+        try {
+          await DefaultCacheManager().removeFile(key);
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Sinkron data siswa fresh (mis. dari server) ke state + Hive,
+  /// tapi HANYA bila foto berubah. Mengembalikan true jika ada update.
+  /// Aman dipanggil berulang — no-op bila tidak ada perubahan.
+  Future<bool> syncStudentProfileIfChanged(Student fresh) async {
+    if (state is! Authenticated) return false;
+    final s = state as Authenticated;
+    if (!s.isStudent) return false;
+    if (!_isStudentImageChanged(s.student, fresh)) return false;
+    await _evictStudentImageCache(s.student);
+    // updateStudentDetails memberi cache-buster + persist + emit,
+    // sehingga beranda & menu langsung rebuild (sudah BlocBuilder).
+    updateStudentDetails(fresh);
+    debugPrint('✅ Foto profil siswa disinkron dari server');
+    return true;
+  }
+
+  /// Silent refresh profil siswa dari server (untuk mendeteksi foto yang
+  /// diubah dari web). Gagal/offline -> diam, pakai data lama.
+  /// Hanya untuk login siswa; parent diabaikan.
+  Future<void> refreshStudentProfileIfChanged() async {
+    if (state is! Authenticated) return;
+    if (!(state as Authenticated).isStudent) return;
+    try {
+      final fresh = await StudentRepository()
+          .fetchStudentFullProfileDetails(useParentApi: false);
+      await syncStudentProfileIfChanged(fresh);
+    } catch (e) {
+      debugPrint('ℹ️ Silent refresh profil dilewati: $e');
+    }
+  }
+
+  /// Gabungkan hasil fetch fresh dengan data lama untuk jalur siswa:
+  /// field lain diambil yang fresh, URL foto dibust bila berubah,
+  /// dipertahankan persis bila sama (agar tidak download ulang).
+  Student _mergeRefreshedStudentImage(Student current, Student fresh) {
+    if (!_isStudentImageChanged(current, fresh)) {
+      return fresh.copyWith(
+        image: current.image,
+        childUserDetails: fresh.childUserDetails?.copyWith(
+              image: current.childUserDetails?.image ??
+                  fresh.childUserDetails!.image,
+            ) ??
+            current.childUserDetails,
+      );
+    }
+    final bustedChild = fresh.childUserDetails?.copyWith(
+      image: (fresh.childUserDetails!.image != null &&
+              fresh.childUserDetails!.image!.isNotEmpty)
+          ? _bustImageUrl(fresh.childUserDetails!.image!)
+          : fresh.childUserDetails!.image,
+    );
+    return fresh.copyWith(
+      image: (fresh.image != null && fresh.image!.isNotEmpty)
+          ? _bustImageUrl(fresh.image!)
+          : current.image,
+      childUserDetails: bustedChild ?? current.childUserDetails,
+    );
+  }
+
+  /// Khusus update foto siswa (cache-buster biar tidak ketahan cache lama).
+  void updateStudentImage(String newUrl) {
+    if (state is! Authenticated) return;
+    final s = state as Authenticated;
+
+    String busted = newUrl;
+    try {
+      final uri = Uri.parse(newUrl);
+      final queryParams = Map<String, dynamic>.from(uri.queryParameters);
+      queryParams['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+      busted = uri.replace(queryParameters: queryParams).toString();
+    } catch (_) {}
+
+    final merged = s.student.copyWith(image: busted);
+
+    authRepository.setStudentDetails(merged);
+
+    emit(Authenticated(
+      jwtToken: s.jwtToken,
+      isStudent: s.isStudent,
+      student: merged,
+      parent: s.parent,
       schoolCode: s.schoolCode,
       children: s.children,
     ));

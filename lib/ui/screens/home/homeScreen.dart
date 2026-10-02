@@ -188,6 +188,12 @@ class HomeScreenState extends State<HomeScreen>
           AuthRepository().registerDeviceToken(fcmId: token);
         }
       });
+
+      // ✅ SINKRON FOTO PROFIL: cek ke server bila foto diubah dari web,
+      // khusus login siswa (parent diabaikan). Silent, gagal/offline diam.
+      if (!context.read<AuthCubit>().isParent()) {
+        context.read<AuthCubit>().refreshStudentProfileIfChanged();
+      }
     });
     debugPrint("HomeScreen initStated exam submit");
     Future.microtask(() => ExamSubmitSyncService.syncIfCached());
@@ -291,6 +297,11 @@ class HomeScreenState extends State<HomeScreen>
       // Safety Net Poin 1: Cek saat resume (HANYA UNTUK PARENT)
       if (mounted && context.read<AuthCubit>().isParent()) {
         context.read<PendingPaymentCheckCubit>().checkAllPendingPayments();
+      }
+      // ✅ SINKRON FOTO PROFIL saat kembali dari background (siswa saja).
+      // Menangkap kasus: foto diganti via web saat app di background.
+      if (mounted && !context.read<AuthCubit>().isParent()) {
+        context.read<AuthCubit>().refreshStudentProfileIfChanged();
       }
     }
   }

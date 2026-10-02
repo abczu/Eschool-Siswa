@@ -100,6 +100,7 @@ class Api {
   static String get verifyOtp => "${databaseUrl}auth/otp/verify";
   static String get refresh => "${databaseUrl}auth/refresh";
   static String get studentProfile => "${databaseUrl}student/get-profile-data";
+  static String get updateStudentProfile => "${databaseUrl}update-profile";
   static String get studentSubjects => "${databaseUrl}student/subjects";
   //get subjects of given class
   static String get classSubjects => "${databaseUrl}student/class-subjects";
